@@ -1,0 +1,14 @@
+
+[Food Wine Pairings]
+VI Wine Food pairing app 
+https://www.linkedin.com/pulse/journey-wine-food-machine-learning-john-kaminsky
+
+Food and Wine pairing using NLP from amazong food reviews
+https://towardsdatascience.com/robosomm-chapter-5-food-and-wine-pairing-7a4a4bb08e9e
+
+
+
+
+[Knowledge Graphs]
+A Survey on Knowledge Graph-Based Recommender Systems
+https://arxiv.org/abs/2003.00911

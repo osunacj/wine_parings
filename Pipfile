@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = "*"
+numpy = "*"
+matplotlib = "*"
+python-dotenv = "*"
+beautifulsoup4 = "*"
+nltk = "*"
+scikit-learn = "*"
+datasets = "*"
+evaluate = "*"
+accelerate = "*"
+transformers = "*"
+tqdm = "*"
+ray = {extras = ["tune"], version = "*"}
+ipywidgets = "*"
+seaborn = "*"
+
+[dev-packages]
+pycodestyle = "*"
+black = "*"
+ipykernel = "*"
+
+[requires]
+python_version = "3.8"
