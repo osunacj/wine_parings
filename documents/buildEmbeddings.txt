@@ -1,0 +1,3 @@
+
+[Extracting Embedding BERT]
+https://mccormickml.com/2019/05/14/BERT-word-embeddings-tutorial/#3-extracting-embeddings

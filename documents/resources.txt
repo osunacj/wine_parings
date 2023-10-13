@@ -4,8 +4,11 @@
 VI Wine Food pairing app 
 https://www.linkedin.com/pulse/journey-wine-food-machine-learning-john-kaminsky
 
-Food and Wine pairing using NLP from amazong food reviews
+Food and Wine pairing using NLP from amazon food reviews
 https://towardsdatascience.com/robosomm-chapter-5-food-and-wine-pairing-7a4a4bb08e9e
+The wine reviews dataset can be found -> https://www.kaggle.com/datasets/roaldschuring/wine-reviews
+Repository for multiple projects related to wine -> https://github.com/RoaldSchuring/wine_food_pairing
+
 
 [Validity of Research]
 The power of knowledge graphs enhancing large languuage models with structured knowledge.
@@ -27,3 +30,11 @@ https://www.researchgate.net/publication/340534222_A_Survey_on_Application_of_Kn
 A Survey on Knowledge Graphs: Representation, Acquisition and Applications
 - Human knowledge provides a formal understanding of the world. Knowledge graphs that represent structural relations between entities have become an increasingly popular research direction towards cognition and human-level intelligence. In this survey, we provide a comprehensive review of knowledge graph covering overall research topics about 1) knowledge graph representation learning, 2) knowledge acquisition and completion, 3) temporal knowledge graph, and 4) knowledge-aware applications, and summarize recent breakthroughs and perspective directions to facilitate future research. We propose a full-view categorization and new taxonomies on these topics. Knowledge graph embedding is organized from four aspects of representation space, scoring function, encoding models, and auxiliary information. For knowledge acquisition, especially knowledge graph completion, embedding methods, path inference, and logical rule reasoning, are reviewed. We further explore several emerging topics, including meta relational learning, commonsense reasoning, and temporal knowledge graphs. To facilitate future research on knowledge graphs, we also provide a curated collection of datasets and open-source libraries on different tasks. In the end, we have a thorough outlook on several promising research directions.
 https://arxiv.org/pdf/2002.00388.pdf
+
+
+
+[Wine]
+
+The Computational Wine Wheel 2.0 and the TriMax Triclustering in Wineinformatics
+- Even with the current state of technology, data growth is increasing so fast that without proper storage and analytical techniques, it is challenging to process and analyze large datasets. This applies to knowledge bases from all fields and all kinds of data. In Wineinformatics, various kind of data related to wine, including physicochemical laboratory data and wine reviews, are analyzed by data science related researches. In the previous work, we proposed the Computational Wine Wheel, derived from 2011’s top 100 wine, to automatically process and extract key attributes from human-language-format wine expert reviews. In this work, past 10 year’s top 100 wines are collected and formed a 1000 excellent wines dataset to further improve the Computational Wine Wheel. The extraction process led to the creation of what we call a Computational Wine Wheel 2.0, which is a wine attribute dictionary consisting of 985 categorized and normalized wine attributes. After the Computational Wine Wheel 2.0 is formed, we experiment it on a region- and grape type- specific dataset to seek new types of information in Wineinformatics. A novel TriMax Triclustering algorithm specifically used for the dataset processed by the Computational Wine Wheel is proposed and applied to discover three dimensional clusters (Wine × Attributes × Vintage) in wine. We found that the TriMax Triclustering algorithm produced promising and cohesive results that can be used in various aspects of the wine industry, such as defined palate grouping and wine searching.
+https://www.springerprofessional.de/en/the-computational-wine-wheel-2-0-and-the-trimax-triclustering-in/10290536
