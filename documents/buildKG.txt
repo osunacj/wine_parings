@@ -1,0 +1,32 @@
+
+[Developing Knowledge Graphs]
+
+To build a knowledge graph from text, we typically need to perform two steps:
+    - NER - Extract entities, a.k.a. Named Entity Recognition (NER), which are going to be the nodes of the knowledge graph.
+    - RC - Extract relations between the entities, a.k.a. Relation Classification (RC), which are going to be the edges of the knowledge graph.
+However these methods do not always yield the best relationship and sometimes they are limited.
+
+Relation extraction is an end to end process that tackles both prior steps simultaneously. REBEL is the name of a model that follows this approach.
+https://github.com/Babelscape/rebel/blob/main/docs/EMNLP_2021_REBEL__Camera_Ready_.pdf
+The authors published their dataset in HuggingFace -> https://huggingface.co/datasets/Babelscape/rebel-dataset
+
+Step to create a smart Knowledge Graph from text are:
+    - Relation Extraction (RE)
+    - Load text and model
+    - Tokenize the text
+    - The model is trained to generate relationships betweeen words.
+    - The output of the model is parsed to relations
+    - Entity linking (Napoleon and Napoleon Bonaparte are the same)
+    - Visulize KB
+
+https://www.nlplanet.org/course-practical-nlp/02-practical-nlp-first-tasks/16-knowledge-graph-from-text.html
+
+
+
+TACRED is a large scale exraction dataset with over 100,000 examples over newswire and web text. -> https://nlp.stanford.edu/projects/tacred/
+
+Wiki80 tranining dataset containing 80 different relationship packs.  The same semantic categories of relationships used on Wikipedia are also used in the treaining data. 
+
+
+This page contains datasets and models used for training models for entity extraction.
+https://nlpprogress.com/english/relationship_extraction.html#:~:text=Relationship%20extraction%20is%20the%20task,employed%20by%2C%20lives%20in).
