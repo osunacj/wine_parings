@@ -1,3 +1,23 @@
 
 [Extracting Embedding BERT]
 https://mccormickml.com/2019/05/14/BERT-word-embeddings-tutorial/#3-extracting-embeddings
+
+
+
+
+
+
+[FoodBert]
+Exploiting Food Embeddings for Ingredient Substitution
+
+- Identifying ingredient substitutes for cooking recipes can be beneficial for various goals, such as nutrient optimization or avoiding allergens. Natural language processing (NLP) techniques can be valuable tools to make
+use of the vast cooking-related knowledge available online, and aid in finding ingredient alternatives. Despite
+previous approaches to identify ingredient substitutes, there is still a lack of research in this area regarding the
+most recent developments in the field of NLP. On top of that, a lack of standardized evaluation metrics makes
+comparing approaches difficult. In this paper, we present two models for ingredient embeddings, Food2Vec
+and FoodBERT. In addition, we combine both approaches with images, resulting in two multimodal representation models. FoodBERT is furthermore used for relation extraction. We conduct a ground truth based
+evaluation for all approaches, as well as a human evaluation. The comparison shows that FoodBERT, and
+especially the multimodal version, is best suited for substitute recommendations in dietary use cases
+https://www.semanticscholar.org/paper/Exploiting-Food-Embeddings-for-Ingredient-Pellegrini-%C3%96zsoy/ec653d3d91d82f00ae2a3843f7be2432f7733c7d
+
+CODE -> https://github.com/ChantalMP/Exploiting-Food-Embeddings-for-Ingredient-Substitution
