@@ -19,6 +19,8 @@ tqdm = "*"
 ray = {extras = ["tune"], version = "*"}
 ipywidgets = "*"
 seaborn = "*"
+selenium = "*"
+webdriver-manager = "*"
 
 [dev-packages]
 pycodestyle = "*"
