@@ -17,15 +17,24 @@ def print_pages(page_num, pages_to_mine):
         print(f"Pages:  {page_num} and {pages_to_mine}")
 
 
-def scrape_wine_links(base_url, min_page_number, max_page_number):
-    wine_pages_to_mine = []
-    for page_number in range(min_page_number, max_page_number):
-        print_pages(page_number, len(wine_pages_to_mine))
-        url_to_mine = base_url + str(page_number) + "&drink_type=wine"
-        try:
-            browser.get(url_to_mine)
-            browser.implicitly_wait(3)
+def press_button(browser, button_selector):
+    try:
+        button = browser.find_element(By.CSS_SELECTOR, button_selector)
+        browser.execute_script("arguments[0].click()", button)
+    except Exception:
+        raise Exception("Failed to parse")
 
+
+def scrape_wine_links(base_url, min_page_number=1, max_page_number=5):
+    wine_pages_to_mine = []
+    current_len = 0
+    historic_len = 1
+    epoch = 1
+    browser.get(base_url)
+    browser.implicitly_wait(1)
+    while current_len != historic_len:
+        print_pages(epoch, current_len)
+        try:
             all_wine_links = browser.find_elements(
                 By.CSS_SELECTOR, "a.ratings-block__cta"
             )
@@ -33,12 +42,18 @@ def scrape_wine_links(base_url, min_page_number, max_page_number):
                 wine_link.get_attribute("href") for wine_link in all_wine_links
             ]
             wine_pages_to_mine.extend(all_wine_links)
+
+            historic_len = current_len
+            current_len = len(wine_pages_to_mine)
+
+            epoch += 1
+            press_button(browser, 'a[aria-label="Next"]')
         except:
             continue
 
     series_wine_pages = pd.Series(wine_pages_to_mine)
     series_wine_pages.to_csv(path, index=False)
-    print(f"Pages:  {max_page_number} and {len(wine_pages_to_mine)}")
+    print(f"Pages:  {epoch} and {current_len}")
     return wine_pages_to_mine
 
 
@@ -134,9 +149,9 @@ class WineInfoScraper:
 def mine_all_wine_info(browser):
     # all_wine_links = pd.read_csv(path)
     all_wine_links = scrape_wine_links(
-        base_url="https://www.wineenthusiast.com/?s=&search_type=ratings&page=",
+        base_url="https://www.wineenthusiast.com/ratings/",
         min_page_number=1,
-        max_page_number=5,
+        max_page_number=700,
     )
 
     all_wine_info = []

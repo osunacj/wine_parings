@@ -14,8 +14,9 @@ path = "./app/data/vivino_pages_to_mine.csv"
 
 
 def print_pages(page_num, pages_to_mine, grape):
-    if page_num % 25 == 0 or pages_to_mine % 75 == 0:
+    if page_num % 11 == 0 or pages_to_mine % 70 == 0:
         print(f"Pages:  {page_num} and {pages_to_mine} and grape: {grape}")
+        time.sleep(5)
 
 
 def press_button(browser, button_selector="button.fc-cta-do-not-consent"):
@@ -30,38 +31,37 @@ def press_button(browser, button_selector="button.fc-cta-do-not-consent"):
 def scrape_wine_links(base_url, min_page_number=1, max_page_number=5):
     wine_pages_to_mine = []
     grapes = [
-        "malbec",
-        "merlot",
-        "tempranillo",
-        "cabernet sauvignon",
-        "chardonnay",
-        "grenache",
-        "syrah",
-        "shiraz",
-        "pinot noir",
-        "bordeaux",
-        "rose",
-        "porto",
-        "sauvignon blanc",
-        "pinot grigo",
-        "zinfandel",
-        "sangiovese",
-        "sparkling",
-        "champagne",
-        "gewurztraminer",
-        "gruner veltliner",
-        "red",
-        "white",
+        # "malbec",
+        # "merlot",
+        # "tempranillo",
+        # "cabernet sauvignon",
+        # "chardonnay",
+        # "grenache",
+        # "syrah",
+        # "shiraz",
+        # "pinot noir",
+        # "bordeaux",
+        # "rose",
+        # "porto",
+        # "sauvignon blanc",
+        # "pinot grigo",
+        # "zinfandel",
+        # "sangiovese",
+        # "sparkling",
+        # "champagne",
+        # "gewurztraminer",
+        # "gruner veltliner",
+        # "red",
+        # "white",
     ]
-    historic_len = 1
-    current_len = 0
+    current_len = 1
     for grape in grapes:
         for page_number in range(min_page_number, max_page_number):
             url_to_mine = base_url + f"{grape}&start={page_number}"
+            browser.implicitly_wait(1)
             print_pages(page_number, current_len, grape)
             try:
                 browser.get(url_to_mine)
-                browser.implicitly_wait(1)
 
                 if page_number == min_page_number and grape == grapes[0]:
                     press_button(browser)
@@ -78,16 +78,21 @@ def scrape_wine_links(base_url, min_page_number=1, max_page_number=5):
                         wine_link.get_attribute("href").replace("nl", "en")
                     )
 
+                historic_len = current_len
                 current_len = len(wine_pages_to_mine)
                 if current_len == historic_len:
+                    time.sleep(60 * 2)
                     break
 
-                historic_len = current_len
             except:
                 continue
 
     series_wine_pages = pd.Series(wine_pages_to_mine)
-    series_wine_pages.to_csv(path, index=False)
+    historic_series = pd.read_csv(path).squeeze()
+    wine_pages_to_mine = pd.concat(
+        [historic_series, series_wine_pages]
+    ).drop_duplicates()
+    wine_pages_to_mine.to_csv(path, index=False)
     print(f"Pages:  {max_page_number} and {len(wine_pages_to_mine)}")
     return wine_pages_to_mine
 
