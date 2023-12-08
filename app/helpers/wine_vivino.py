@@ -12,14 +12,14 @@ headers = {
 
 
 def generate_params():
-    ratings_range = np.arange(1, 5, 0.2)
-    price_range = range(5, 705, 50)
-    countries = ["", "it", "fr", "pt", "es", "au", "us", "ar", "cl", "at"]
-    grapes = range(1, 10, 1)
+    ratings_range = np.arange(3, 5, 0.2)
+    price_range = range(5, 705, 100)
+    # countries = ["", "it", "fr", "pt", "es", "au", "us", "ar", "cl", "at"]
+    grapes = range(0, 20, 1)
     params = []
     for rating in ratings_range:
         for j, price in enumerate(price_range):
-            for country in countries:
+            # for country in countries:
                 for grape in grapes:
                     params.append(
                         {
@@ -28,8 +28,8 @@ def generate_params():
                             else 500,
                             "price_range_min": price,
                             "min_rating": rating,
-                            "grape_ids[]": grape,
-                            "country_codes[]": country,
+                            "grape_ids[]": grape if grape != 0 else '',
+                            "country_codes[]": '',
                         }
                     )
     return params
@@ -66,18 +66,26 @@ def get_style(style) -> dict:
         return {}
 
     wine_dict["foods"] = get_food(style["food"])
+    wine_dict["grapes"] = get_grapes(style["grapes"])
     wine_dict["varietal"] = style["varietal_name"]
     wine_dict["description"] = style["description"]
     wine_dict["fast_description"] = (
         style["body_description"]
         + " "
         + str(style["body"])
-        + ", Acidity description"
+        + ", Acidity "
         + style["acidity_description"]
         + " "
         + str(style["acidity"])
     )
     return wine_dict
+
+def get_grapes(grapes: list):
+    clean_grapes = ""
+    if grapes:
+        for grape in grapes:
+            clean_grapes = grape["name"] + ", " + clean_grapes
+        return clean_grapes.strip()
 
 
 def get_food(foods: list):
@@ -112,8 +120,9 @@ def get_reviews(id, year) -> str:
 def parse_wine(wine):
     wine_dict = {}
     wine_dict["name"] = wine["vintage"]["wine"]["name"]
-    wine_dict["year"] = wine["vintage"]["year"]
-    wine_dict["id"] = wine["vintage"]["wine"]["id"]
+    wine_dict["year"] = wine["vintage"]["year"] if wine["vintage"]["year"] else None
+    wine_dict["vintage_id"] = wine["vintage"]["id"]
+    wine_dict['id'] = wine["vintage"]['wine']["id"]
     wine_dict["ratings"] = wine["vintage"]["statistics"]["wine_ratings_count"]
     wine_dict["score"] = wine["vintage"]["statistics"]["wine_ratings_average"]
     wine_dict["status"] = wine["vintage"]["statistics"]["status"]
@@ -136,10 +145,16 @@ def parse_wine(wine):
 
 
 def save_data_csv(data: list):
-    # historic_data = pd.read_csv(PATH)
     new_wine_data = pd.DataFrame(data)
-    wine_data = new_wine_data.drop_duplicates()
-    wine_data.to_csv(PATH)
+    new_wine_data.to_csv(PATH, mode = 'a', index=False)
+    
+
+
+def extract_wine(wine_records) -> list:
+    all_wine_info = []
+    for wine_record in wine_records:
+        all_wine_info.append(parse_wine(wine_record))
+    return all_wine_info
 
 
 def main():
@@ -149,45 +164,68 @@ def main():
         "grape_filter": "varietal",
         "order_by": "ratings_count",
         "order": "desc",
+        "per_page": 50,
         "language": "en",
     }
     params = generate_params()
 
     all_wine_info = []
-    for param in params[:5]:
-        has_wines = True
-        page = 1
-        while has_wines and page < 5:
-            try:
-                payload = {**param, **const, "page": page}
+    wine_ids = []
+    indx = 432
+ 
+ 
+
+    for param in params[434::2]:
+        try:
+            indx += 2
+            payload = {**param, **const, "page": 1}
+            response = requests.get(BASE_URL, params=payload, headers=headers)
+
+            if response.status_code != 200:
+                print(response.status_code, response.reason)
+                continue
+
+            records = response.json()["explore_vintage"]["records_matched"]
+            wine_records = response.json()["explore_vintage"]["matches"]
+            all_wine_info.extend(extract_wine(wine_records=wine_records))
+            pages = round(records / 50)
+            current_count= len(all_wine_info)
+            if current_count % 5 == 0:
+                print(f"Wine count: {current_count} and page: 1 / {pages}, idx: {indx}")
+ 
+
+            for page in range(2, pages + 1):
+                payload['page'] = page
                 response = requests.get(BASE_URL, params=payload, headers=headers)
+                wine_records = response.json()["explore_vintage"]["matches"]
+                
+                try:
+                    all_wine_info.extend(extract_wine(wine_records=wine_records))
+                    current_count= len(all_wine_info)
 
-                if response.status_code != 200:
-                    break
+                    if current_count % 5 == 0 or current_count % 2 == 0:
+                        print(f"Wine count: {current_count} and page: {page} / {pages}, idx: {indx}")
 
-                response = response.json()["explore_vintage"]
-                records = response["records_matched"]
+                    if current_count % 15 == 0 or current_count % 10 == 0:
+                        save_data_csv(all_wine_info)
+                        all_wine_info = []
+                except:
+                    continue
 
-                wine_records = response["matches"]
-
-                if len(wine_records) < 10 or records < 80:
-                    has_wines = False
-                    break
-
-                for wine_record in wine_records:
-                    all_wine_info.append(parse_wine(wine_record))
-                page += 1
-
-            except:
-                page += 1
-                break
-
-        current_count = len(all_wine_info)
-        if current_count % 60 == 0:
-            print(f"Wine count: {current_count}")
-        if current_count % 500 == 0:
-            save_data_csv(all_wine_info)
-
+            if current_count % 15 == 0:
+                print(f"Wine count: {current_count} and idx: {indx}") 
+                save_data_csv(all_wine_info)
+                all_wine_info = []
+               
+        except:
+            continue
+        
+    save_data_csv(all_wine_info)
+    data = pd.read_csv(PATH, index_col='index').drop_duplicates()
+    data.to_csv(PATH, mode='w', index=False)
+    print('History data: ', len(data))
+    del data 
+        
 
 if __name__ == "__main__":
     main()
