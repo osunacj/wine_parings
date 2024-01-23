@@ -1,0 +1,142 @@
+@inproceedings{Pellegrini2021ExploitingFE,
+  title={Exploiting Food Embeddings for Ingredient Substitution},
+  author={Chantal Pellegrini and Ege {\"O}zsoy and Monika Wintergerst and Georg Groh},
+  booktitle={International Conference on Health Informatics},
+  year={2021},
+  url={https://api.semanticscholar.org/CorpusID:232094288}
+}
+%% Identifying ingredients substitutes for cooking has various positive benefits for example, nutrient optimization or avoid allergens. NLP can be used to determine ingredient alternatives. There is lack of evaluation metrics which makes comparing results difficult. They present two models/techniques to generate embeddings (Food2Vec, FoodBert). Training data was pair of ingredients that could be substituted between themselfs.
+%% Its relevant since they use a different approach to knowledge graphs, word embeddings of ingredidents to determine possible substitutions by KNN on the embedding space.
+%% Solution 
+
+%% https://www.nlplanet.org/course-practical-nlp/02-practical-nlp-first-tasks/15-knowledge-graphs
+%% page with relevant information on how to build knowledge graphs for unstructured text by training a model to produce triplets of (entity, relation, entity)
+%% Fabio Chiusano, 2022
+%% Examples
+
+@misc{Sajid_2023, title={Leveraging the power of knowledge graphs: Enhancing large language models with structured knowledge}, url={https://www.wisecube.ai/blog/leveraging-the-power-of-knowledge-graphs-enhancing-large-language-models-with-structured-knowledge/}, journal={Wisecube AI – Semantic Discovery in Biomedicine}, author={Sajid, Haziqa}, year={2023}, month={Aug}} 
+%% This article talks about the importance of enriching LLMs with structure data. By combining such techniques the generated text has higher credibility as the reader can reference the source of such information/facts. KG capabilites (Semantic context, felxibility, inferencing, cross domain insights). In-context learning is an important tool for recomendation systems for instance. Benefits of levering KG with LLMs (LLM validation, Coherent and accurate Responses, information relevance, enhanced precision)
+%% This article is relevant because its serves as evidence that KG are a good knowledge system to help LLM for cross domain information. 
+%% Evidence
+
+@misc{Sajid_2023b, title={Battling LLM hallucinations in biomedicine: The role of knowledge graphs in knowledge injection techniques}, url={https://www.wisecube.ai/blog/battling-llm-hallucinations-in-biomedicine-the-role-of-knowledge-graphs-in-knowledge-injection-techniques/}, journal={Wisecube AI – Semantic Discovery in Biomedicine}, author={Sajid, Haziqa}, year={2023}, month={Nov}} 
+%% Hallucinations of LLM affect domain specific industries like biomedicine. Consquences of hallucinating LLM in these type of industries is sever and potentially fatal. 
+%% Evidence
+
+@misc{pal2023medhalt,
+      title={Med-HALT: Medical Domain Hallucination Test for Large Language Models}, 
+      author={Ankit Pal and Logesh Kumar Umapathi and Malaikannan Sankarasubbu},
+      year={2023},
+      eprint={2307.15343},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%% This paper focuses on the challenges posed by hallucinations in LLMs specially in medice. Hallucination of these models could lead to sever consequences and plausibly fatal. They propose a new benchmark (Medical Domain Hallucination Test) designed to evaluate hallucinations.
+%% This paepr is relevant becuase they not ony use the same models to test hallucinations, but also provide a benchmark to test hallucinations on domain specific data.
+%% Testing reasoning by means of False Confidence Test, None of the Above, Fake Questions. 
+%% Testing memory focus on the ability of the model to retrieve acurate information (facts) from the encoded training data.
+%% Solution
+
+@misc{fu2023revisiting,
+      title={Revisiting the Knowledge Injection Frameworks}, 
+      author={Peng Fu and Yiming Zhang and Haobo Wang and Weikang Qiu and Junbo Zhao},
+      year={2023},
+      eprint={2311.01150},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%% This process initially identifies entities in the input text that are then matched to entities in an external knowledge base. Then the retrieved knowledge is then injected with the original input as the prompt into the LLM. The process of knowledge injection constitutes severl crucial components that contribute to enhacing LLMs responses (reliability): KG, Controllable Text Generation, Graph to Text Mapping, LLM Prompt Formatting. 
+%% Solution
+
+@misc{Sajid_2023a, title={Combining large language models and knowledge graphs}, url={https://www.wisecube.ai/blog/combining-large-language-models-and-knowledge-graphs/}, journal={Wisecube AI – Semantic Discovery in Biomedicine}, author={Sajid, Haziqa}, year={2023}, month={Jul}} 
+%% Combining large languge models with knowledge grpahs
+%% Description of LLMs and KG in tandem
+%% This article might be interesting because explains some pros and cons of each technology used. 
+
+@misc{pan2023unifying,
+      title={Unifying Large Language Models and Knowledge Graphs: A Roadmap}, 
+      author={Shirui Pan and Linhao Luo and Yufei Wang and Chen Chen and Jiapu Wang and Xindong Wu},
+      year={2023},
+      eprint={2306.08302},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%%VERY IMPORTANT PAPER, HAS A LOT OF REFERENCES 
+%% LLMs are a black box models which often is hard to verify where the factual information is comming from, otherwise the model falls short from capturing and accessing factual knowlege. KG, in contrast capture factual information in a structured manner (It can also be easly verified). KG are hard to construct and maintain which challenges the methods in KGs to generate facts and inference knowledge.
+%% This paper is relevant since they explore three frameworks to unify LLMs and KGs. 1) KG-enhanced LLMs 2) LLM-augmented KGs 3) Synergized LLMs + KGs
+%% Problem
+
+@misc{borji2023categorical,
+      title={A Categorical Archive of ChatGPT Failures}, 
+      author={Ali Borji},
+      year={2023},
+      eprint={2302.03494},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%% This paper analyses the failures that ChatGPT is having. Eleven categories of failures are analysed in this paper and they include, but not limited to 1) reasoning 2) factual errors 3) math 4) coding 5) bias and discrimination 6) Logic 7) Humor 8) Ethics and Morality 9) Syntactic Structure. This paper also highlights the risks, limitations and societal implications of ChatGPT. Something that is still unknown is the degree to whcih LLMs memorize vs understand what they generate. It is yet unclear if LLMs can capture human thought yet they may fully represent model human language. For example:  “Mr. Smith has 4 daughters. Each of his daughters has
+a brother. How many children does Mr. Smith have” to ChatGPT, it gave the correct answer of 5.
+However, when I altered the wording to “My dad has 4 sons. Each of his sons has a sister. How many
+children my dad has”, ChatGPT provided an incorrect response of 8. Moreover LLMs, ChatGPT, has not way to show how uncertain it is about its answers. Incorrect answer with too much confidence. 
+Sometimes responses might be incosistent and or contradictory contradictory. 
+%% Problem
+
+@misc{jiang2023active,
+      title={Active Retrieval Augmented Generation}, 
+      author={Zhengbao Jiang and Frank F. Xu and Luyu Gao and Zhiqing Sun and Qian Liu and Jane Dwivedi-Yu and Yiming Yang and Jamie Callan and Graham Neubig},
+      year={2023},
+      eprint={2305.06983},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%%LLMs have the tendecy to hallucinate and create factually inaccurate outputs. Most RAGs employ a retrieve and generate setpu from the the input. Meaning that the retrieved information only releates to the input. This input only retrieval system can be a limitation specially involving generation of long texts. This paper prvodes a forward looking active retrieval (FLARE).
+%% Problem
+
+@misc{siriwardhana2022improving,
+      title={Improving the Domain Adaptation of Retrieval Augmented Generation (RAG) Models for Open Domain Question Answering}, 
+      author={Shamane Siriwardhana and Rivindu Weerasekera and Elliott Wen and Tharindu Kaluarachchi and Rajib Rana and Suranga Nanayakkara},
+      year={2022},
+      eprint={2210.02627},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%% In this paper en extension of RAG is proposded, RAG-end2end, that can adapt to domain specific knowledge by updating the external KB during training. The end2end model achieves significat performance on three domains, COVID, News and Conversations, compared to its predecessor.
+%% Solution
+
+@inproceedings{cao-etal-2022-hallucinated,
+    title = "Hallucinated but Factual! Inspecting the Factuality of Hallucinations in Abstractive Summarization",
+    author = "Cao, Meng  and
+      Dong, Yue  and
+      Cheung, Jackie",
+    editor = "Muresan, Smaranda  and
+      Nakov, Preslav  and
+      Villavicencio, Aline",
+    booktitle = "Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+    month = may,
+    year = "2022",
+    address = "Dublin, Ireland",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2022.acl-long.236",
+    doi = "10.18653/v1/2022.acl-long.236",
+    pages = "3340--3354",
+    abstract = "State-of-the-art abstractive summarization systems often generate hallucinations; i.e., content that is not directly inferable from the source text. Despite being assumed to be incorrect, we find that much hallucinated content is actually consistent with world knowledge, which we call factual hallucinations. Including these factual hallucinations in a summary can be beneficial because they provide useful background information. In this work, we propose a novel detection approach that separates factual from non-factual hallucinations of entities. Our method is based on an entity{'}s prior and posterior probabilities according to pre-trained and finetuned masked language models, respectively. Empirical results suggest that our method vastly outperforms two baselines in both accuracy and F1 scores and has a strong correlation with human judgments on factuality classification tasks. Furthermore, we use our method as a reward signal to train a summarization system using an off-line reinforcement learning (RL) algorithm that can significantly improve the factuality of generated summaries while maintaining the level of abstractiveness.",
+}
+%% This paper is relevant since here they explore the possibility of hallucinations being factual. Then, they develop a system that can detect the factuality of such hallucination. Such types of hallucinations can be beneficial for creative writing and summarization, but not for recomendations?
+%% Problem
+
+@misc{tian2023finetuning,
+      title={Fine-tuning Language Models for Factuality}, 
+      author={Katherine Tian and Eric Mitchell and Huaxiu Yao and Christopher D. Manning and Chelsea Finn},
+      year={2023},
+      eprint={2311.08401},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+%% Can reference free approaches work well for recomendation systems?
+%% LLMs capabilities has led to the widspread of use to sometimes replace traditional search engines. Nonetheless, these models are prone to making convicing but innacurrate claims. These hallucinations can spread misinformation and generate misconceptions. In this paper they train a model to be more factual without human intervention. manual fact-checking is time consuming making it expensive to acquire training labels. Here they study two apporaches 1) check consistency of generated text against an external knowledge source and 2) Direct Preference Optimization Algorithm enables fintuning on objectives rather than supervised imitation ussing a preference ranking. Reference free apporaches provide a scalable self-supervision stratefy to improve factuality.
+%% Problem
+
+https://neo4j.com/developer-blog/why-vector-search-didnt-work-rag/
+
+%%https://www.forbes.com/sites/joannechen/2023/09/06/how-perplexityai-is-pioneering-the-future-of-search/
+%%This is blog post of the interview one of forbes interviewers had with the CEO of perplexity. 

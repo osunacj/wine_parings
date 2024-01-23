@@ -12,7 +12,7 @@ Repository for multiple projects related to wine -> https://github.com/RoaldSchu
 
 [Validity of Research]
 The power of knowledge graphs enhancing large languuage models with structured knowledge.
-https://www.wisecube.ai/blog/leveraging-the-power-of-knowledge-graphs-enhancing-large-language-models-with-structured-knowledge/
+https://www.wisecube.ai/blog/leveraging-the-power-of3-knowledge-graphs-enhancing-large-language-models-with-structured-knowledge/
 
 
 
