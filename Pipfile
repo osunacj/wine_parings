@@ -21,6 +21,8 @@ ipywidgets = "*"
 seaborn = "*"
 selenium = "*"
 webdriver-manager = "*"
+spacy = "*"
+gensim = "*"
 
 [dev-packages]
 pycodestyle = "*"
