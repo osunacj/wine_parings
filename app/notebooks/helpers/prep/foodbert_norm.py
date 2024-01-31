@@ -62,19 +62,19 @@ class RecipeNormalizer:
 
     def lemmatize_token_to_str(self, token, token_tag):
         if self.lemmatization_types is None or token_tag in self.lemmatization_types:
-            lemmatized = token.lemma_
+            lemmatized = token.lemma_.strip()
         else:
-            lemmatized = token.text.lower()
+            lemmatized = token.text.lower().strip()
 
         return lemmatized
 
-    def normalize_ingredients(self, ingredients: List[str], strict=True):
+    def normalize_ingredients(self, ingredients: List[str], strict=True, disable=False):
         ingredients = [ingredient.split(',')[0] for ingredient in ingredients]  # Ignore after comma
         # Disable unnecessary parts of the pipeline, also run at once with pipe which is more efficient
-        ingredients_docs = self.model.pipe(ingredients, n_process=-1, batch_size=1000)
+        ingredients_docs = self.model.pipe(ingredients, n_process=-1, batch_size=3000)
 
         cleaned_ingredients = []
-        for ingredient_doc in tqdm(ingredients_docs, total= len(ingredients)):
+        for ingredient_doc in tqdm(ingredients_docs, total= len(ingredients), disable=disable):
             cleaned_ingredient = []
             for token in ingredient_doc:
                 token_tag = token.tag_
@@ -94,7 +94,7 @@ class RecipeNormalizer:
         return cleaned_ingredients
     
     def match_ingredients(self, normalized_instruction_tokens, ingredients_set, n):
-        not_word_tokens = ['.', ',', '!', '?', ' ', ';', ':', '-']
+        not_word_tokens = ['.', ',', '!', '?', ' ', ';', ':']
         for i in range(len(normalized_instruction_tokens) - n, -1, -1):
             sublist = normalized_instruction_tokens[i:i + n]
             if sublist[0] in not_word_tokens or sublist[-1] in not_word_tokens:
@@ -117,20 +117,23 @@ class RecipeNormalizer:
         return normalized_instruction_tokens, False
 
     def normalize_instruction(self, instruction, ingredients_set):
-        instruction_docs = self.model.pipe(instruction, n_process=-1, batch_size=1000)
-        normalized_instruction = ''
+        instruction_docs = self.model.pipe(instruction, n_process=-1, batch_size=500)
+        normalized_instruction = []
         for instruction_doc in instruction_docs:
-            for idx, word in enumerate(instruction_doc):
+            for word in instruction_doc:
+                if word.text == ' ' or word.text == '  ': continue
+
                 if not word.is_punct:  # we want a space before all non-punctuation words
                     space = ' '
                 else:
                     space = ''
-                if word.tag_ in ['NN', 'NNS', 'NNP', 'NOUN', 'NNPS']:
-                    normalized_instruction += space + self.lemmatize_token_to_str(token=word, token_tag='NOUN')
-                else:
-                    normalized_instruction += space + word.text
 
-        normalized_instruction = normalized_instruction.strip()
+                if word.tag_ in ['NN', 'NNS', 'NNP', 'NOUN', 'NNPS']:
+                    normalized_instruction.append(space + self.lemmatize_token_to_str(token=word, token_tag='NOUN'))
+                else:
+                    normalized_instruction.append( space + word.text)
+
+        normalized_instruction = ''.join(normalized_instruction).strip()
 
         normalized_instruction_tokens = re.findall(r"[\w'-]+|[.,!?; ]", normalized_instruction)
         # find all sublists of tokens with descending length
