@@ -83,7 +83,7 @@ def extract_term_frequeuncies_from_bigrams(wine_bigrams):
     return wine_terms_sorted
 
 def normalize_wine_reviews(reviews):
-    cleaned_ingredients = pd.read_csv('./app/data/food_reviews/ingredients.csv')
+    cleaned_ingredients = pd.read_csv('./app/data/produce/ingredients.csv')
     cleaned_ingredients = cleaned_ingredients['0'].to_numpy()
 
     ingredients_set = {tuple(ing.split(' ')) for ing in cleaned_ingredients}
