@@ -6,7 +6,7 @@ import spacy
 
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from notebooks.helpers.prep.foodbert_norm import RecipeNormalizer
+from app.notebooks.helpers.prep.normalization import RecipeNormalizer
 
 
 BASE_PATH = "../data"
