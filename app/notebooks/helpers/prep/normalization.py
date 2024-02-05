@@ -13,7 +13,7 @@ from nltk.corpus import stopwords
 import pandas as pd
 import numpy as np
 
-from ingredients_mapping import ingredients_mappings
+from .ingredients_mapping import ingredients_mappings
 
 stop_words = set(stopwords.words("english"))
 
@@ -81,7 +81,7 @@ class RecipeNormalizer:
     Originally code from FoodBert modified to custom needs.
     """
 
-    def __init__(self, lemmatization_types=None):
+    def __init__(self, lemmatization_types=None, mapping: dict = {}):
         self.model = spacy.load(
             "en_core_web_sm", disable=["parser", "ner"]
         )  # Disable parts of the pipeline that are not necessary
@@ -97,6 +97,7 @@ class RecipeNormalizer:
             "NNP": "NOUN",
             "NNPS": "NOUN",
             ".": "NOUN",
+            "JJ": "ADJ",
             "JJS": "ADJ",
             "JJR": "ADJ",
             "VBD": "VERB",
@@ -108,6 +109,10 @@ class RecipeNormalizer:
 
         # if not None, only lemmatize types in this list
         self.lemmatization_types = lemmatization_types
+        if mapping:
+            self.mapping = {**mapping, **ingredients_mappings}
+        else:
+            self.mapping = ingredients_mappings
 
     def lemmatize_token_to_str(self, token, token_tag):
         if self.lemmatization_types is None or token_tag in self.lemmatization_types:
@@ -151,7 +156,7 @@ class RecipeNormalizer:
         return cleaned_ingredients
 
     def match_ingredients(self, normalized_instruction_tokens, n):
-        not_word_tokens = [".", ",", "!", "?", " ", ";", ":", "-"]
+        not_word_tokens = [".", ",", "!", "?", " ", ";", ":"]
         for i in range(len(normalized_instruction_tokens) - n, -1, -1):
             sublist = normalized_instruction_tokens[i : i + n]
             if (
@@ -166,9 +171,9 @@ class RecipeNormalizer:
                 [token for token in sublist if token not in not_word_tokens]
             )
 
-            if clean_sublist in ingredients_mappings:
+            if clean_sublist in self.mapping:
                 new_instruction_tokens = []
-                new_ingredient = ingredients_mappings[clean_sublist].replace(" ", "_")
+                new_ingredient = self.mapping[clean_sublist].replace(" ", "_")
                 for idx, token in enumerate(normalized_instruction_tokens):
                     if idx < i or idx >= i + n:
                         new_instruction_tokens.append(token)
@@ -188,11 +193,8 @@ class RecipeNormalizer:
                 if word.text == " " or word.text == "  ":
                     continue
 
-                if (
-                    not word.is_punct
-                ):  # we want a space before all non-punctuation words
-                    space = " "
-                else:
+                space = " "
+                if word.is_punct:  # we want a space before all non-punctuation words
                     space = ""
 
                 if word.tag_ in ["NN", "NNS", "NNP", "NOUN", "NNPS"]:
@@ -220,11 +222,22 @@ class RecipeNormalizer:
 
         return "".join(normalized_instruction_tokens)
 
-    def read_and_write_ingredients(self, new_ingredients: dict = {}) -> dict:
-        file_path = "./app/notebooks/helpers/prep/ingredients_mapping.py"
-        existing_ingredients = ingredients_mappings
+    def read_and_write_ingredients(
+        self,
+        new_ingredients: dict = {},
+        custom_path: str = "",
+        append_ingredients: bool = True,
+        variable_name: str = "ingredients_mappings",
+    ) -> dict:
+        if len(custom_path) != 0:
+            file_path = custom_path
+        else:
+            file_path = "./app/notebooks/helpers/prep/ingredients_mapping.py"
 
-        new_ingredients.update(existing_ingredients)
+        if append_ingredients:
+            existing_ingredients = ingredients_mappings
+
+            new_ingredients.update(existing_ingredients)
 
         new_ingredients = {
             elem.strip(): value.strip()
@@ -238,7 +251,7 @@ class RecipeNormalizer:
         new_ingredients = {key: value for key, value in new_ingredients_sorted}
 
         with open(file_path, "w") as file:
-            file.write("ingredients_mappings = " + str(new_ingredients))
+            file.write(f"{variable_name} = " + str(new_ingredients))
             file.close()
 
         return new_ingredients
