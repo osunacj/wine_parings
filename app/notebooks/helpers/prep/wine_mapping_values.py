@@ -637,7 +637,7 @@ wine_terms_mappings = {
     "white pepper": "white pepper",
     "wild berry": "wild berry",
     "wild flower": "wild flower",
-    "wildflower": "wildflower",
+    "wildflower": "wild flower",
     "wood": "wood",
     "wood age": "wood age",
     "wood resin": "wood resin",
