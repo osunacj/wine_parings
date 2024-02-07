@@ -6,10 +6,10 @@ import spacy
 
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from app.notebooks.helpers.prep.normalization import RecipeNormalizer
+from notebooks.helpers.prep.normalization import RecipeNormalizer
 
 
-BASE_PATH = "../data"
+BASE_PATH = "./app/data"
 
 
 def read_data_and_parse_columns():
@@ -93,6 +93,7 @@ def extract_ingredients(all_raw_ingredients):
 
 def normalize_instructions(instructions_list):
     normalized_instructions = []
+    ingredients_in_instructions = []
     instruction_normalizer = RecipeNormalizer()
     for instructions in tqdm(instructions_list, total=len(instructions_list)):
         if instructions is np.nan:
@@ -104,22 +105,27 @@ def normalize_instructions(instructions_list):
         else:
             instruction_text = [step.strip() for step in eval(instructions)]
 
-        normalized_instructions.append(
-            instruction_normalizer.normalize_instruction(instruction_text)
-        )
-    return normalized_instructions
+        (
+            normalized_instruction,
+            ingredients_in_instruction,
+        ) = instruction_normalizer.normalize_instruction(instruction_text)
+
+        normalized_instructions.append(normalized_instruction)
+        ingredients_in_instructions.append(ingredients_in_instruction)
+
+    return normalized_instructions, ingredients_in_instructions
 
 
 def main():
     food_dataset = read_data_and_parse_columns()
 
-    cleaned_ingredients = extract_ingredients(food_dataset.ingredients.to_numpy())
+    # extract_ingredients(food_dataset.ingredients.to_numpy())
 
-    normalized_instructions_token = normalize_instructions(
-        food_dataset["steps"].to_numpy()[:500]
+    normalized_instructions_token, ingredients_in_instruction = normalize_instructions(
+        food_dataset["steps"].to_numpy()[:50]
     )
-    normalized_name_token = normalize_instructions(food_dataset["name"].to_numpy())
-    normalized_description_token = normalize_instructions(
+    normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
+    normalized_description_token, _ = normalize_instructions(
         food_dataset["description"].to_numpy()[:500]
     )
 

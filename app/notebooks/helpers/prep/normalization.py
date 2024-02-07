@@ -81,6 +81,8 @@ class RecipeNormalizer:
     Originally code from FoodBert modified to custom needs.
     """
 
+    not_word_tokens = [".", ",", "!", "?", " ", ";", ":", "-"]
+
     def __init__(self, lemmatization_types=None, mapping: dict = {}):
         self.model = spacy.load(
             "en_core_web_sm", disable=["parser", "ner"]
@@ -156,19 +158,18 @@ class RecipeNormalizer:
         return cleaned_ingredients
 
     def match_ingredients(self, normalized_instruction_tokens, n):
-        not_word_tokens = [".", ",", "!", "?", " ", ";", ":"]
         for i in range(len(normalized_instruction_tokens) - n, -1, -1):
             sublist = normalized_instruction_tokens[i : i + n]
             if (
-                sublist[0] in not_word_tokens
-                or sublist[-1] in not_word_tokens
+                sublist[0] in self.not_word_tokens
+                or sublist[-1] in self.not_word_tokens
                 or sublist[0] in stop_words
                 or sublist[-1] in stop_words
             ):
                 continue
 
             clean_sublist = " ".join(
-                [token for token in sublist if token not in not_word_tokens]
+                [token for token in sublist if token not in self.not_word_tokens]
             )
 
             if clean_sublist in self.mapping:
@@ -190,7 +191,7 @@ class RecipeNormalizer:
         normalized_instruction = []
         for instruction_doc in instruction_docs:
             for word in instruction_doc:
-                if word.text == " " or word.text == "  ":
+                if word.text in [" ", "  ", "-"]:
                     continue
 
                 space = " "
@@ -220,7 +221,34 @@ class RecipeNormalizer:
                     normalized_instruction_tokens, n
                 )
 
-        return "".join(normalized_instruction_tokens)
+        ingredients_in_instruction = self.extract_ingredients_for_instruction(
+            normalized_instruction_tokens
+        )
+        return (
+            "".join(normalized_instruction_tokens).strip(),
+            ingredients_in_instruction,
+        )
+
+    def extract_ingredients_for_instruction(self, normalized_instruction_tokens):
+        ingredients_in_instruction = []
+        for token in normalized_instruction_tokens:
+            if token in self.not_word_tokens or token in stop_words:
+                continue
+
+            if (
+                token not in ingredients_in_instruction
+                and token.replace("_", " ") in self.mapping
+            ):
+                ingredients_in_instruction.append(
+                    self.mapping[token.replace("_", " ")].replace(" ", "_")
+                )
+
+        ingredients_in_instruction = [
+            ingredient
+            for ingredient in ingredients_in_instruction
+            if len(ingredient) > 0
+        ]
+        return ingredients_in_instruction
 
     def read_and_write_ingredients(
         self,
@@ -235,17 +263,15 @@ class RecipeNormalizer:
             file_path = "./app/notebooks/helpers/prep/ingredients_mapping.py"
 
         if append_ingredients:
-            existing_ingredients = ingredients_mappings
-
-            new_ingredients.update(existing_ingredients)
+            new_ingredients.update(ingredients_mappings)
 
         new_ingredients = {
-            elem.strip(): value.strip()
+            elem.strip(): value
             for elem, value in new_ingredients.items()
             if len(elem.split()) <= 3 and len(elem) > 1
         }
         new_ingredients_sorted = sorted(
-            new_ingredients.items(), key=lambda item: item[1]
+            new_ingredients.items(), key=lambda item: item[0]
         )
 
         new_ingredients = {key: value for key, value in new_ingredients_sorted}
@@ -255,56 +281,3 @@ class RecipeNormalizer:
             file.close()
 
         return new_ingredients
-
-
-def normalize_instructions(instructions_list):
-    normalized_instructions = []
-    instruction_normalizer = RecipeNormalizer()
-    for instructions in tqdm(instructions_list, total=len(instructions_list)):
-        if instructions is np.nan:
-            normalized_instructions.append(None)
-            continue
-
-        if type(eval(instructions)) == str:
-            instruction_text = [instructions]
-        else:
-            instruction_text = [step.strip() for step in eval(instructions)]
-
-        normalized_instructions.append(
-            instruction_normalizer.normalize_instruction(instruction_text)
-        )
-    return normalized_instructions
-
-
-def extract_ingredients(all_raw_ingredients):
-    list_ingredients = []
-    for ingredients in tqdm(all_raw_ingredients, total=len(all_raw_ingredients)):
-        for ingredient in eval(ingredients):
-            if " and " in ingredient or " or " in ingredient:
-                ingredient = ingredient.replace(" and ", " ").split(" ")
-                for ingre in ingredient:
-                    list_ingredients.append(ingre)
-            else:
-                list_ingredients.append(ingredient)
-
-    list_ingredients = list(dict.fromkeys(list_ingredients))
-    ingredient_normalizer = RecipeNormalizer(lemmatization_types=["NOUN"])
-
-    cleaned_ingredients = ingredient_normalizer.normalize_ingredients(list_ingredients)
-    cleaned_ingredients = ingredient_normalizer.read_and_write_ingredients(
-        cleaned_ingredients
-    )
-
-    return cleaned_ingredients
-
-
-if __name__ == "__main__":
-    BASE_PATH = "./app/data"
-    food_review_dataset = pd.read_csv(BASE_PATH + "/food_reviews/RAW_recipes.csv")
-    cleaned_ingredients = extract_ingredients(
-        food_review_dataset.ingredients.to_numpy()[:100]
-    )
-
-    # normalized_instructions_token = normalize_instructions(
-    #     food_review_dataset["steps"].to_numpy()[:100]
-    # )

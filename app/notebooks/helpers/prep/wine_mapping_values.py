@@ -63,6 +63,7 @@ wine_terms_mappings = {
     "blossom": ("blossom", "aroma"),
     "blue": (None, "nonaroma"),
     "blue black": ("blue black", "nonaroma"),
+    "blue cheese": ("blue cheese", "aroma"),
     "blue flower": ("blue flower", "aroma"),
     "blue fruit": ("blue fruit", "aroma"),
     "blueberry": ("blueberry", "aroma"),

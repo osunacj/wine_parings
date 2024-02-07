@@ -12,43 +12,15 @@ from gensim.models.phrases import Phrases, Phraser
 from nltk.tokenize import word_tokenize, sent_tokenize
 from notebooks.helpers.prep.wine_mapping_values import wine_terms_mappings
 from notebooks.helpers.prep.wine_descriptors_mapping import wine_descriptors_mapping
+from notebooks.helpers.prep.wine_data_processor import (
+    preprocess_wine_dataframe,
+    merge_all_wine_files,
+)
 from nltk.corpus import stopwords
 import nltk
 import string
 
 # nltk.download('stopwords')
-
-BASE_PATH = "./app/data/wine_extracts"
-
-
-def merge_all_wine_files(write=False):
-    i = 0
-    wine_dataframe = pd.DataFrame()
-    for file in os.listdir(BASE_PATH)[:3]:
-        file_location = BASE_PATH + "/" + str(file)
-        if i == 0:
-            wine_dataframe = pd.read_csv(file_location)
-            i += 1
-        else:
-            df_to_append = pd.read_csv(
-                file_location, low_memory=False, encoding="latin-1"
-            )
-            wine_dataframe = pd.concat(
-                [wine_dataframe, df_to_append], axis=0, ignore_index=False
-            )
-
-    wine_dataframe.drop_duplicates(subset=["Name"], inplace=True)
-
-    geographies = ["Subregion", "Region", "Province", "Country"]
-
-    for geo in geographies:
-        wine_dataframe[geo] = wine_dataframe[geo].apply(lambda x: str(x).strip())
-
-    if write:
-        wine_dataframe.drop(["Unnamed: 0"], inplace=True, axis=1)
-        wine_dataframe.to_csv("./app/data/produce/wine_data.csv", index_label=False)
-
-    return wine_dataframe
 
 
 def normalize_wine_terms_corpus(all_wine_corpus):
@@ -67,6 +39,7 @@ def normalize_wine_terms_corpus(all_wine_corpus):
 
 
 def extract_term_frequeuncies_from_bigrams(wine_bigrams, max_threshold, min_threshold):
+    # Exract common wine terms
     wine_bigrams_list = [term for sentence in wine_bigrams for term in sentence]
     wine_terms_count = {term: 0 for term in wine_bigrams_list}
 
@@ -114,18 +87,19 @@ def extract_term_frequeuncies_from_bigrams(wine_bigrams, max_threshold, min_thre
 def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []):
     descriptor_normalizer = RecipeNormalizer(lemmatization_types=["NOUN", "ADJ"])
 
-    if not wine_descriptors and wine_descriptors_mapping:
+    if (
+        list(wine_descriptors_mapping) == list(wine_terms_mappings)
+        and not wine_descriptors
+    ):
+        # if normalized descriptors exits
         return wine_descriptors_mapping
 
-    if not wine_descriptors_mapping:
-        normalized_descriptors = descriptor_normalizer.normalize_ingredients(
-            wine_descriptors
-        )
-    else:
-        normalized_descriptors = descriptor_normalizer.normalize_ingredients(
-            wine_descriptors
-        )
-        normalized_descriptors.update(wine_descriptors_mapping)
+    # If wine_descriptors_mapping exists or is empty descriptors will be added
+    normalized_descriptors = descriptor_normalizer.normalize_ingredients(
+        [*wine_descriptors, *list(wine_terms_mappings)]
+    )
+
+    normalized_descriptors.update(wine_descriptors_mapping)
 
     normalized_descriptors = descriptor_normalizer.read_and_write_ingredients(
         normalized_descriptors,
@@ -133,16 +107,16 @@ def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []):
         False,
         "wine_descriptors_mapping",
     )
-
     return normalized_descriptors
 
 
 def normalize_wine_reviews(reviews, normalized_descriptors_mapping):
-    normalized_instructions = []
+    normalized_wine_reviews, normalized_descriptors_reviews = [], []
+
     wine_normalizer = RecipeNormalizer(mapping=normalized_descriptors_mapping)
     for instructions in tqdm(reviews, total=len(reviews)):
         if instructions is np.nan:
-            normalized_instructions.append(None)
+            normalized_wine_reviews.append(None)
             continue
 
         if type(instructions) == str:
@@ -150,43 +124,57 @@ def normalize_wine_reviews(reviews, normalized_descriptors_mapping):
         else:
             instruction_text = [step.strip() for step in eval(instructions)]
 
-        normalized_instructions.append(
-            wine_normalizer.normalize_instruction(instruction_text)
+        wine_review, descriptors_in_review = wine_normalizer.normalize_instruction(
+            instruction_text
         )
 
-    return normalized_instructions
+        normalized_wine_reviews.append(wine_review)
+        normalized_descriptors_reviews.append(descriptors_in_review)
+
+    return normalized_wine_reviews, normalized_descriptors_reviews
+
+
+def tokenize_corpus_for_term_extraction(corpus) -> list:
+    normalized_corpus_by_sentences = normalize_wine_terms_corpus(corpus)
+
+    wine_bigram_model = Phrases(normalized_corpus_by_sentences, min_count=10)
+    wine_bigrams = [wine_bigram_model[line] for line in normalized_corpus_by_sentences]
+    wine_trigram_model = Phrases(wine_bigrams, min_count=5)
+
+    # wine_trigram_model.save("wine_trigrams.pkl")
+    # wine_trigram_model = Phraser.load('wine_trigrams.pkl')
+
+    phrased_wine_sentences = [wine_trigram_model[line] for line in wine_bigrams]
+
+    descriptors_from_corpus = extract_term_frequeuncies_from_bigrams(
+        phrased_wine_sentences, max_threshold=500, min_threshold=15
+    )
+
+    descriptors_from_corpus = [*descriptors_from_corpus, *list(wine_terms_mappings)]
+    return descriptors_from_corpus
 
 
 def main():
     # wine_dataframe = merge_all_wine_files(write=True)
-    wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
-
+    # wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
+    # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
+    wine_dataframe = pd.read_csv("./app/data/production/wines.csv")
     # all_wine_corpus = " ".join(
     #     str(sentence) for sentence in wine_dataframe.Description.to_numpy()[:10000]
     # ).lower()
 
-    # normalized_corpus_by_sentences = normalize_wine_terms_corpus(all_wine_corpus)
+    # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    # wine_bigram_model = Phrases(normalized_corpus_by_sentences, min_count=10)
-    # wine_bigrams = [wine_bigram_model[line] for line in normalized_corpus_by_sentences]
-    # wine_trigram_model = Phrases(wine_bigrams, min_count=5)
-
-    # # wine_trigram_model.save("wine_trigrams.pkl")
-    # # wine_trigram_model = Phraser.load('wine_trigrams.pkl')
-
-    # phrased_wine_sentences = [wine_trigram_model[line] for line in wine_bigrams]
-
-    # descriptors = extract_term_frequeuncies_from_bigrams(
-    #     phrased_wine_sentences, max_threshold=500, min_threshold=15
-    # )
-
-    # descriptors = [*descriptors, *list(wine_terms_mappings)]
     normalized_descriptors = normalize_wine_descriptors_as_ingredients()
 
-    reviews = wine_dataframe.Description.to_numpy()[:500]
-    clean_reviews = normalize_wine_reviews(reviews, normalized_descriptors)
-    wine_dataframe["clean_descriptions"] = None
-    wine_dataframe["clean_descriptions"].iloc[:500] = clean_reviews
+    reviews = wine_dataframe.Description.to_numpy()[:50]
+    clean_reviews, normalized_descriptors_reviews = normalize_wine_reviews(
+        reviews, normalized_descriptors
+    )
+
+    clean_reviews
+
+    normalized_descriptors_reviews
 
 
 if __name__ == "__main__":

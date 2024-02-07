@@ -157,6 +157,7 @@ ingredients_mappings = {
     "ginger": "ginger",
     "granulated sugar": "granulated sugar",
     "great northern bean": "bean",
+    "green apple": "green apple",
     "green bean": "green bean",
     "green grape": "green grape",
     "green olive": "green olive",
