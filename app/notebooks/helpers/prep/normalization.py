@@ -85,7 +85,7 @@ class RecipeNormalizer:
 
     def __init__(self, lemmatization_types=None, mapping: dict = {}):
         self.model = spacy.load(
-            "en_core_web_sm", disable=["parser", "ner"]
+            "en_core_web_md", disable=["parser", "ner"]
         )  # Disable parts of the pipeline that are not necessary
         Token.set_extension(
             "to_keep", default=False, force=True

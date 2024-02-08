@@ -87,10 +87,7 @@ def extract_term_frequeuncies_from_bigrams(wine_bigrams, max_threshold, min_thre
 def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []):
     descriptor_normalizer = RecipeNormalizer(lemmatization_types=["NOUN", "ADJ"])
 
-    if (
-        list(wine_descriptors_mapping) == list(wine_terms_mappings)
-        and not wine_descriptors
-    ):
+    if list(wine_descriptors_mapping) and not wine_descriptors:
         # if normalized descriptors exits
         return wine_descriptors_mapping
 
@@ -165,16 +162,22 @@ def main():
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
+    reduced_wine_dataframe = wine_dataframe.loc[:1000, :]
+
     normalized_descriptors = normalize_wine_descriptors_as_ingredients()
 
-    reviews = wine_dataframe.Description.to_numpy()[:50]
-    clean_reviews, normalized_descriptors_reviews = normalize_wine_reviews(
+    reviews = reduced_wine_dataframe.Description.to_numpy()
+
+    clean_reviews, ingredients_in_reviews = normalize_wine_reviews(
         reviews, normalized_descriptors
     )
 
-    clean_reviews
+    reduced_wine_dataframe["clean_descriptions"] = clean_reviews
+    reduced_wine_dataframe.loc[:, "descriptors_in_reviews"] = ingredients_in_reviews
 
-    normalized_descriptors_reviews
+    reduced_wine_dataframe.to_csv(
+        "./app/data/test/reduced_wines.csv", index_label=False
+    )
 
 
 if __name__ == "__main__":

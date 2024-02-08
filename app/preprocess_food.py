@@ -119,7 +119,7 @@ def normalize_instructions(instructions_list):
 def main():
     food_dataset = read_data_and_parse_columns()
 
-    # extract_ingredients(food_dataset.ingredients.to_numpy())
+    extract_ingredients(food_dataset.ingredients.to_numpy())
 
     normalized_instructions_token, ingredients_in_instruction = normalize_instructions(
         food_dataset["steps"].to_numpy()[:50]
