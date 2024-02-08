@@ -8,8 +8,9 @@ class InstructionsDataset(Dataset):
         self.tokenizer = tokenizer
 
         batch_encoding = tokenizer.batch_encode_plus(
-            sentences, add_special_tokens=True, max_length=128
+            sentences, add_special_tokens=True, max_length=256, truncation=True
         )
+
         self.examples = batch_encoding["input_ids"]
         self.examples = self._tensorize_batch(
             [torch.tensor(elem) for elem in self.examples]
@@ -26,6 +27,7 @@ class InstructionsDataset(Dataset):
                     "You are attempting to pad samples but the tokenizer you are using"
                     f" ({self.tokenizer.__class__.__name__}) does not have one."
                 )
+            print(self.tokenizer.pad_token_id)
             return pad_sequence(
                 examples, batch_first=True, padding_value=self.tokenizer.pad_token_id
             )

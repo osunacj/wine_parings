@@ -1,22 +1,34 @@
-
 import torch
 from torch.utils.data import DataLoader
 from transformers import BertModel, BertTokenizer
 
 
+from collections import defaultdict
+from pathlib import Path
+from .dataset_generator import InstructionsDataset
+from ..prep.utils import get_all_ingredients
+
+import numpy as np
+import torch
+
 
 class PredictionModel:
-
     def __init__(self):
-        self.model: BertModel = BertModel.from_pretrained(
-            pretrained_model_name_or_path='foodbert/data/mlm_output/checkpoint-final')
-        with open('foodbert/data/used_ingredients.json', 'r') as f:
-            used_ingredients = json.load(f)
-        self.tokenizer = BertTokenizer(vocab_file='./config/bert-base-cased-vocab.txt', do_lower_case=,
-                                       max_len=128, never_split=used_ingredients)
+        self.model = BertModel.from_pretrained(
+            pretrained_model_name_or_path="./app/notebooks/helpers/models/checkpoint-final"
+        )
 
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.tokenizer = BertTokenizer(
+            vocab_file="./app/notebooks/helpers/models/config/bert-base-cased-vocab.txt",
+            do_lower_case=False,
+            max_len=256,
+            never_split=get_all_ingredients(as_list=True),
+        )
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
 
+        self.model.resize_token_embeddings(len(self.tokenizer))
         self.model.to(self.device)
 
     def predict_embeddings(self, sentences):
@@ -44,11 +56,32 @@ class PredictionModel:
         return food_embedding[0]
 
 
+def _merge_synonmys(food_to_embeddings_dict, max_sentence_count):
+    synonmy_replacements_path = Path(
+        "foodbert_embeddings/data/synonmy_replacements.json"
+    )
+    if synonmy_replacements_path.exists():
+        with synonmy_replacements_path.open() as f:
+            synonmy_replacements = json.load(f)
+    else:
+        synonmy_replacements = {}
 
+    merged_dict = defaultdict(list)
+    # Merge ingredients
+    for key, value in food_to_embeddings_dict.items():
+        if key in synonmy_replacements:
+            key_to_use = synonmy_replacements[key]
+        else:
+            key_to_use = key
 
+        merged_dict[key_to_use].append(value)
 
-def main():
+    merged_dict = {k: np.concatenate(v) for k, v in merged_dict.items()}
+    # When embedding count exceeds maximum allowed, reduce back to requested count
+    for key, value in merged_dict.items():
+        if len(value) > max_sentence_count:
+            index = np.random.choice(value.shape[0], max_sentence_count, replace=False)
+            new_value = value[index]
+            merged_dict[key] = new_value
 
-
-if __name__ == '__main__':
-    main()
+    return merged_dict
