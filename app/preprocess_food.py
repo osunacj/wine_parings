@@ -7,7 +7,8 @@ import spacy
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from notebooks.helpers.prep.normalization import RecipeNormalizer
-
+from notebooks.helpers.prep.frequencies import FrequencyExtractor
+from notebooks.helpers.prep.ingredients_mapping import ingredients_mappings
 
 BASE_PATH = "./app/data"
 
@@ -15,44 +16,44 @@ BASE_PATH = "./app/data"
 def read_data_and_parse_columns():
     df = pd.read_csv(BASE_PATH + "/food_reviews/RAW_recipes.csv")
 
-    df[
-        [
-            "calories",
-            "total fat (PDV)",
-            "sugar (PDV)",
-            "sodium (PDV)",
-            "protein (PDV)",
-            "saturated fat (PDV)",
-            "carbohydrates (PDV)",
-        ]
-    ] = df.nutrition.str.split(",", expand=True)
-    df["calories"] = df["calories"].apply(lambda x: x.replace("[", ""))
-    df["carbohydrates (PDV)"] = df["carbohydrates (PDV)"].apply(
-        lambda x: x.replace("]", "")
-    )
-    df[
-        [
-            "calories",
-            "total fat (PDV)",
-            "sugar (PDV)",
-            "sodium (PDV)",
-            "protein (PDV)",
-            "saturated fat (PDV)",
-            "carbohydrates (PDV)",
-        ]
-    ] = df[
-        [
-            "calories",
-            "total fat (PDV)",
-            "sugar (PDV)",
-            "sodium (PDV)",
-            "protein (PDV)",
-            "saturated fat (PDV)",
-            "carbohydrates (PDV)",
-        ]
-    ].astype(
-        "float"
-    )
+    # df[
+    #     [
+    #         "calories",
+    #         "total fat (PDV)",
+    #         "sugar (PDV)",
+    #         "sodium (PDV)",
+    #         "protein (PDV)",
+    #         "saturated fat (PDV)",
+    #         "carbohydrates (PDV)",
+    #     ]
+    # ] = df.nutrition.str.split(",", expand=True)
+    # df["calories"] = df["calories"].apply(lambda x: x.replace("[", ""))
+    # df["carbohydrates (PDV)"] = df["carbohydrates (PDV)"].apply(
+    #     lambda x: x.replace("]", "")
+    # )
+    # df[
+    #     [
+    #         "calories",
+    #         "total fat (PDV)",
+    #         "sugar (PDV)",
+    #         "sodium (PDV)",
+    #         "protein (PDV)",
+    #         "saturated fat (PDV)",
+    #         "carbohydrates (PDV)",
+    #     ]
+    # ] = df[
+    #     [
+    #         "calories",
+    #         "total fat (PDV)",
+    #         "sugar (PDV)",
+    #         "sodium (PDV)",
+    #         "protein (PDV)",
+    #         "saturated fat (PDV)",
+    #         "carbohydrates (PDV)",
+    #     ]
+    # ].astype(
+    #     "float"
+    # )
     df.drop(
         [
             "minutes",
@@ -70,6 +71,9 @@ def read_data_and_parse_columns():
 
 
 def extract_ingredients(all_raw_ingredients):
+    if ingredients_mappings:
+        return ingredients_mappings
+
     list_ingredients = []
     for ingredients in tqdm(all_raw_ingredients, total=len(all_raw_ingredients)):
         for ingredient in eval(ingredients):
@@ -119,23 +123,38 @@ def normalize_instructions(instructions_list):
 def main():
     food_dataset = read_data_and_parse_columns()
 
-    extract_ingredients(food_dataset.ingredients.to_numpy())
+    clean_ingredients = extract_ingredients(food_dataset.ingredients.to_numpy())
 
-    normalized_instructions_token, ingredients_in_instruction = normalize_instructions(
-        food_dataset["steps"].to_numpy()[:50]
-    )
-    normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
-    normalized_description_token, _ = normalize_instructions(
-        food_dataset["description"].to_numpy()[:500]
+    normalized_instructions_token, ingredients_in_instructions = normalize_instructions(
+        food_dataset["steps"].to_numpy()[:1000]
     )
 
-    food_dataset.drop(["name", "steps", "description"], inplace=True, axis=1)
+    f_extractor = FrequencyExtractor(
+        clean_sentences=normalized_instructions_token,
+        clean_ingredients=list(clean_ingredients),
+    )
+    f_extractor.count_all_ingredients()
 
-    food_dataset[["clean_instructions", "clean_description", "clean_name"]] = None
+    # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
+    # normalized_description_token, _ = normalize_instructions(
+    #     food_dataset["description"].to_numpy()
+    # )
 
-    food_dataset["clean_instructions"][:500] = normalized_instructions_token
-    food_dataset["clean_description"][:500] = normalized_description_token
-    food_dataset["clean_name"][:500] = normalized_name_token
+    food_dataset.drop(["steps", "description", "ingredients"], inplace=True, axis=1)
+
+    food_dataset[
+        [
+            "clean_instructions",
+            "ingredients_in_instructions",
+        ]
+    ] = None
+
+    food_dataset.loc[:500, "ingredients_in_instructions"] = ingredients_in_instructions
+    food_dataset.loc[:500, "clean_instructions"] = normalized_instructions_token
+    # food_dataset["clean_description"] = normalized_description_token
+    # food_dataset["clean_name"] = normalized_name_token
+
+    food_dataset.to_csv("./app/data/test/reduced_food.csv", index_label=False)
 
 
 if __name__ == "__main__":

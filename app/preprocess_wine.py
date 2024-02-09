@@ -156,28 +156,27 @@ def main():
     # wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
     # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
     wine_dataframe = pd.read_csv("./app/data/production/wines.csv")
-    # all_wine_corpus = " ".join(
-    #     str(sentence) for sentence in wine_dataframe.Description.to_numpy()[:10000]
-    # ).lower()
+    all_wine_corpus = " ".join(
+        str(sentence) for sentence in wine_dataframe.Description.to_numpy()
+    ).lower()
 
-    # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
+    descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    reduced_wine_dataframe = wine_dataframe.loc[:1000, :]
+    wine_dataframe = wine_dataframe.loc[:1000, :]
 
     normalized_descriptors = normalize_wine_descriptors_as_ingredients()
 
-    reviews = reduced_wine_dataframe.Description.to_numpy()
+    reviews = wine_dataframe.Description.to_numpy()
 
     clean_reviews, ingredients_in_reviews = normalize_wine_reviews(
         reviews, normalized_descriptors
     )
 
-    reduced_wine_dataframe["clean_descriptions"] = clean_reviews
-    reduced_wine_dataframe.loc[:, "descriptors_in_reviews"] = ingredients_in_reviews
+    wine_dataframe.drop(["Description"], axis=1, inplace=True)
+    wine_dataframe["clean_descriptions"] = clean_reviews
+    wine_dataframe.loc[:, "descriptors_in_reviews"] = ingredients_in_reviews
 
-    reduced_wine_dataframe.to_csv(
-        "./app/data/test/reduced_wines.csv", index_label=False
-    )
+    wine_dataframe.to_csv("./app/data/test/reduced_wines.csv", index_label=False)
 
 
 if __name__ == "__main__":

@@ -172,9 +172,9 @@ class RecipeNormalizer:
                 [token for token in sublist if token not in self.not_word_tokens]
             )
 
-            if clean_sublist in self.mapping:
+            if clean_sublist.lower() in self.mapping:
                 new_instruction_tokens = []
-                new_ingredient = self.mapping[clean_sublist].replace(" ", "_")
+                new_ingredient = self.mapping[clean_sublist.lower()].replace(" ", "_")
                 for idx, token in enumerate(normalized_instruction_tokens):
                     if idx < i or idx >= i + n:
                         new_instruction_tokens.append(token)
