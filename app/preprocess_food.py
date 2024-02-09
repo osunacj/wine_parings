@@ -125,13 +125,15 @@ def main():
 
     clean_ingredients = extract_ingredients(food_dataset.ingredients.to_numpy())
 
+    food_dataset = food_dataset.loc[:1000, :]
+
     normalized_instructions_token, ingredients_in_instructions = normalize_instructions(
-        food_dataset["steps"].to_numpy()[:1000]
+        food_dataset["steps"].to_numpy()
     )
 
     f_extractor = FrequencyExtractor(
         clean_sentences=normalized_instructions_token,
-        clean_ingredients=list(clean_ingredients),
+        clean_ingredients=list(clean_ingredients.values()),
     )
     f_extractor.count_all_ingredients()
 
@@ -142,15 +144,8 @@ def main():
 
     food_dataset.drop(["steps", "description", "ingredients"], inplace=True, axis=1)
 
-    food_dataset[
-        [
-            "clean_instructions",
-            "ingredients_in_instructions",
-        ]
-    ] = None
-
-    food_dataset.loc[:500, "ingredients_in_instructions"] = ingredients_in_instructions
-    food_dataset.loc[:500, "clean_instructions"] = normalized_instructions_token
+    food_dataset.loc[:, "ingredients_in_instructions"] = ingredients_in_instructions
+    food_dataset.loc[:, "clean_instructions"] = normalized_instructions_token
     # food_dataset["clean_description"] = normalized_description_token
     # food_dataset["clean_name"] = normalized_name_token
 

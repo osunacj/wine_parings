@@ -8,15 +8,16 @@ class FrequencyExtractor:
         self.clean_ingredients = clean_ingredients
         self.clean_sentences = clean_sentences
 
-    def count_all_ingredients(self, min_threshold=5, max_threshold=50):
+    def count_all_ingredients(self, min_threshold=50, max_threshold=500):
         ingredients_count = {
             ingredient.replace(" ", "_"): 0 for ingredient in self.clean_ingredients
         }
 
         for sentence in self.clean_sentences:
-            for word in sentence:
-                if word in ingredients_count:
-                    ingredients_count[word] += 1
+            for ingredient in self.clean_ingredients:
+                ingredient = ingredient.replace(" ", "_")
+                if ingredient in ingredients_count and ingredient in sentence:
+                    ingredients_count[ingredient] += 1
 
         ingredients_count_sorted = sorted(
             ingredients_count.items(), key=lambda x: x[1], reverse=True
@@ -28,9 +29,9 @@ class FrequencyExtractor:
             file.write(f"frequencies= " + str(ingredients_count_sorted))
             file.close()
 
-        first_threshold = min_threshold + 10
-        second_threshold = min_threshold + 20
-        third_threshold = max_threshold - 15
+        first_threshold = min_threshold + 100
+        second_threshold = min_threshold + 200
+        third_threshold = max_threshold - 150
 
         print(
             f"In total found below {min_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] < min_threshold])} ingredients"
