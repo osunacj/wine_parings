@@ -27,7 +27,6 @@ class InstructionsDataset(Dataset):
                     "You are attempting to pad samples but the tokenizer you are using"
                     f" ({self.tokenizer.__class__.__name__}) does not have one."
                 )
-            print(self.tokenizer.pad_token_id)
             return pad_sequence(
                 examples, batch_first=True, padding_value=self.tokenizer.pad_token_id
             )

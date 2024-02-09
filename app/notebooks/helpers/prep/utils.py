@@ -10,9 +10,10 @@ def get_all_ingredients(as_list=True) -> Union[Dict[str, str], List[str]]:
     if as_list:
         ingredients = []
         for value in all_ingredients.values():
-            if value.replace(" ", "_") not in ingredients:
-                ingredients.append(value.replace(" ", "_"))
-        return ingredients
+            value = value.replace(" ", "_")
+            if value not in ingredients and len(value) > 0:
+                ingredients.append(value)
+        return sorted(ingredients)
 
     return all_ingredients
 
