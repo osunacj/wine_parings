@@ -88,10 +88,6 @@ def extract_ingredients(all_raw_ingredients):
     ingredient_normalizer = RecipeNormalizer(lemmatization_types=["NOUN"])
 
     cleaned_ingredients = ingredient_normalizer.normalize_ingredients(list_ingredients)
-    cleaned_ingredients = ingredient_normalizer.read_and_write_ingredients(
-        cleaned_ingredients
-    )
-
     return cleaned_ingredients
 
 
@@ -122,10 +118,11 @@ def normalize_instructions(instructions_list):
 
 def main():
     food_dataset = read_data_and_parse_columns()
+    food_dataset.dropna(subset=["steps"], inplace=True)
 
     clean_ingredients = extract_ingredients(food_dataset.ingredients.to_numpy())
 
-    food_dataset = food_dataset.loc[:1000, :]
+    food_dataset = food_dataset.loc[:3000, :]
 
     normalized_instructions_token, ingredients_in_instructions = normalize_instructions(
         food_dataset["steps"].to_numpy()
@@ -133,9 +130,10 @@ def main():
 
     f_extractor = FrequencyExtractor(
         clean_sentences=normalized_instructions_token,
-        clean_ingredients=list(clean_ingredients.values()),
+        clean_ingredients=clean_ingredients,
+        type="food",
     )
-    f_extractor.count_all_ingredients()
+    f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
 
     # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
     # normalized_description_token, _ = normalize_instructions(

@@ -1,30 +1,48 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+from .utils import read_and_write_ingredients
+import re
+from nltk.corpus import stopwords
+
+
+stop_words = set(stopwords.words("english"))
+not_words = [".", ",", "!", "?", " ", ";", ":", "-"]
 
 
 class FrequencyExtractor:
-    def __init__(self, clean_ingredients: list, clean_sentences: list):
+    def __init__(self, clean_ingredients: dict, clean_sentences: list, type="food"):
         self.clean_ingredients = clean_ingredients
         self.clean_sentences = clean_sentences
+        self.type = type
 
-    def count_all_ingredients(self, min_threshold=50, max_threshold=500):
+    def count_all_ingredients(
+        self,
+        min_threshold=50,
+        max_threshold=500,
+        exclude_rare=True,
+    ):
         ingredients_count = {
-            ingredient.replace(" ", "_"): 0 for ingredient in self.clean_ingredients
+            key: [ingredient, 0] for key, ingredient in self.clean_ingredients.items()
         }
 
         for sentence in self.clean_sentences:
-            for ingredient in self.clean_ingredients:
-                ingredient = ingredient.replace(" ", "_")
-                if ingredient in ingredients_count and ingredient in sentence:
-                    ingredients_count[ingredient] += 1
+            for word in re.findall(r"[\w'-]+|[.,!?;]", sentence):
+                if word in stop_words or word in not_words:
+                    continue
+
+                if word.replace("_", " ") in ingredients_count:
+                    ingredients_count[word.replace("_", " ")][1] += 1
 
         ingredients_count_sorted = sorted(
-            ingredients_count.items(), key=lambda x: x[1], reverse=True
+            ingredients_count.items(), key=lambda x: x[1][1], reverse=True
         )
 
+        if exclude_rare:
+            self.exclude_rare_ingredients(ingredients_count_sorted, min_threshold)
+
         with open(
-            "./app/notebooks/helpers/prep/food_ingredients_frequencies.py", "w"
+            f"./app/notebooks/helpers/temp/{self.type}_ingredients_frequencies.py", "w"
         ) as file:
             file.write(f"frequencies= " + str(ingredients_count_sorted))
             file.close()
@@ -34,36 +52,38 @@ class FrequencyExtractor:
         third_threshold = max_threshold - 150
 
         print(
-            f"In total found below {min_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] < min_threshold])} ingredients"
+            f"In total found below {min_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1][1] < min_threshold])} ingredients"
         )
         print(
-            f"In total found from {min_threshold} to {first_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] >= min_threshold and elem[1] < first_threshold])} ingredients"
+            f"In total found from {min_threshold} to {first_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1][1] >= min_threshold and elem[1][1] < first_threshold])} ingredients"
         )
         print(
-            f"In total found from {first_threshold} to {second_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] >= first_threshold and elem[1] < second_threshold])} ingredients"
+            f"In total found from {first_threshold} to {second_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1][1] >= first_threshold and elem[1][1] < second_threshold])} ingredients"
         )
         print(
-            f"In total found from {third_threshold} to {max_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] > third_threshold and elem[1] < max_threshold])} ingredients"
+            f"In total found from {third_threshold} to {max_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1][1] > third_threshold and elem[1][1] < max_threshold])} ingredients"
         )
         print(
-            f"In total found above  {max_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1] > max_threshold])} ingredients"
+            f"In total found above  {max_threshold}: {len([elem for elem in ingredients_count_sorted if elem[1][1] > max_threshold])} ingredients"
         )
 
         return ingredients_count_sorted
 
-    def exlude_rare_ingredients(self, ingredients_count: dict, threshold):
-        with open("./app/data/") as f:
-            vocab = f.read().splitlines()
-        to_keep_ingredients = [
-            ingredient for ingredient, counts in ingredients_count if counts > threshold
-        ]
+    def exclude_rare_ingredients(self, ingredients_count: list, threshold):
+        to_keep_ingredients = {
+            key: ingredient[0]
+            for key, ingredient in ingredients_count
+            if ingredient[1] > threshold
+        }
 
-        ingredients_to_add = []
-        for ingredient_to_keep in to_keep_ingredients:
-            if ingredient_to_keep not in vocab:
-                ingredients_to_add.append(ingredient_to_keep)
-
-        with open("file_to_append", mode="a") as file_append:
-            file_append.write("\n".join(ingredients_to_add))
-
-        print(len(ingredients_to_add))
+        if self.type == "wine":
+            read_and_write_ingredients(
+                to_keep_ingredients,
+                "./app/notebooks/helpers/prep/wine_descriptors_mapping.py",
+                False,
+                "wine_descriptors_mapping",
+            )
+        else:
+            read_and_write_ingredients(
+                to_keep_ingredients,
+            )

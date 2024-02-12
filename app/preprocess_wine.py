@@ -7,6 +7,7 @@ import spacy
 
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+from notebooks.helpers.prep.frequencies import FrequencyExtractor
 from notebooks.helpers.prep.normalization import RecipeNormalizer
 from gensim.models.phrases import Phrases, Phraser
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -84,7 +85,7 @@ def extract_term_frequeuncies_from_bigrams(wine_bigrams, max_threshold, min_thre
     return wine_terms_sorted
 
 
-def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []):
+def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []) -> dict:
     descriptor_normalizer = RecipeNormalizer(lemmatization_types=["NOUN", "ADJ"])
 
     if list(wine_descriptors_mapping) and not wine_descriptors:
@@ -97,13 +98,6 @@ def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []):
     )
 
     normalized_descriptors.update(wine_descriptors_mapping)
-
-    normalized_descriptors = descriptor_normalizer.read_and_write_ingredients(
-        normalized_descriptors,
-        "./app/notebooks/helpers/prep/wine_descriptors_mapping.py",
-        False,
-        "wine_descriptors_mapping",
-    )
     return normalized_descriptors
 
 
@@ -155,14 +149,16 @@ def main():
     # wine_dataframe = merge_all_wine_files(write=True)
     # wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
     # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
-    wine_dataframe = pd.read_csv("./app/data/production/wines.csv")
-    all_wine_corpus = " ".join(
-        str(sentence) for sentence in wine_dataframe.Description.to_numpy()
-    ).lower()
+    wine_dataframe = pd.read_csv("./app/data/production/wines.csv").dropna(
+        subset=["Description"]
+    )
+    # all_wine_corpus = " ".join(
+    #     str(sentence) for sentence in wine_dataframe.Description.to_numpy()
+    # ).lower()
 
-    descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
+    # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[:1000, :]
+    wine_dataframe = wine_dataframe.loc[:3000, :]
 
     normalized_descriptors = normalize_wine_descriptors_as_ingredients()
 
@@ -171,6 +167,11 @@ def main():
     clean_reviews, ingredients_in_reviews = normalize_wine_reviews(
         reviews, normalized_descriptors
     )
+
+    frequency_extractor = FrequencyExtractor(
+        normalized_descriptors, clean_reviews, "wine"
+    )
+    frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
 
     wine_dataframe.drop(["Description"], axis=1, inplace=True)
     wine_dataframe["clean_descriptions"] = clean_reviews

@@ -39,6 +39,36 @@ def modify_vocabulary():
     print(f"\nA total of {len(ingredients_to_add)} were added to vocab.")
 
 
+def read_and_write_ingredients(
+    new_ingredients: dict = {},
+    custom_path: str = "",
+    append_ingredients: bool = True,
+    variable_name: str = "ingredients_mappings",
+) -> dict:
+    if len(custom_path) != 0:
+        file_path = custom_path
+    else:
+        file_path = "./app/notebooks/helpers/prep/ingredients_mapping.py"
+
+    if append_ingredients:
+        new_ingredients.update(ingredients_mappings)
+
+    new_ingredients = {
+        elem.strip(): value
+        for elem, value in new_ingredients.items()
+        if len(elem.split()) <= 3 and len(elem) > 1
+    }
+    new_ingredients_sorted = sorted(new_ingredients.items(), key=lambda item: item[0])
+
+    new_ingredients = {key: value for key, value in new_ingredients_sorted}
+
+    with open(file_path, "w") as file:
+        file.write(f"{variable_name} = " + str(new_ingredients))
+        file.close()
+
+    return new_ingredients
+
+
 if __name__ == "__main__":
     # ingredients = get_all_ingredients(True)
     modify_vocabulary()
