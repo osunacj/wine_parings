@@ -398,7 +398,7 @@ wine_terms_mappings = {
     "oak-driven": ("oak-driven", "aroma", "aroma"),
     "ocean": ("ocean", "aroma", "salt"),
     "off-dry": ("off-dry", "nonaroma", "sweet"),
-    "oil": ("oil", "aroma", "aroma"),
+    "oil": ("oil", "aroma", "fat"),
     "oily": ("oily", "aroma", "aroma"),
     "olallieberry": ("olallieberry", "aroma", "aroma"),
     "olive": ("olive", "aroma", "aroma"),

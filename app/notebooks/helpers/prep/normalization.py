@@ -26,6 +26,7 @@ def has_number(token):
 @Language.component("custom_removel_component")
 def custom_removel_component(doc):
     in_paranthesis = False
+    stop_words = set(stopwords.words("english"))
     words_to_remove = [
         "/",
         "-",
@@ -44,6 +45,9 @@ def custom_removel_component(doc):
         "oz",
         "qt",
         "free",
+        "drink",
+        "top",
+        "mix",
     ]
 
     for token in doc:
@@ -82,6 +86,28 @@ class RecipeNormalizer:
     """
 
     not_word_tokens = [".", ",", "!", "?", " ", ";", ":", "-"]
+    words_to_remove = [
+        "/",
+        "-",
+        "ounce",
+        "cup",
+        "teaspoon",
+        "tbsp",
+        "tsp",
+        "tablespoon",
+        "sm",
+        "c",
+        "cube",
+        "tbsp.",
+        "sm.",
+        "c.",
+        "oz",
+        "qt",
+        "free",
+        "drink",
+        "top",
+        "mix",
+    ]
 
     def __init__(self, lemmatization_types=None, mapping: dict = {}):
         self.model = spacy.load(
@@ -172,9 +198,9 @@ class RecipeNormalizer:
                 [token for token in sublist if token not in self.not_word_tokens]
             )
 
-            if clean_sublist.lower() in self.mapping:
+            if clean_sublist in self.mapping:
                 new_instruction_tokens = []
-                new_ingredient = self.mapping[clean_sublist.lower()].replace(" ", "_")
+                new_ingredient = self.mapping[clean_sublist].replace(" ", "_")
                 for idx, token in enumerate(normalized_instruction_tokens):
                     if idx < i or idx >= i + n:
                         new_instruction_tokens.append(token)
@@ -187,7 +213,7 @@ class RecipeNormalizer:
         return normalized_instruction_tokens, False
 
     def normalize_instruction(self, instruction):
-        instruction_docs = self.model.pipe(instruction, n_process=-1, batch_size=3000)
+        instruction_docs = self.model.pipe(instruction, n_process=-1, batch_size=1)
         normalized_instruction = []
         for instruction_doc in instruction_docs:
             for word in instruction_doc:
@@ -232,20 +258,20 @@ class RecipeNormalizer:
     def extract_ingredients_for_instruction(self, normalized_instruction_tokens):
         ingredients_in_instruction = []
         for token in normalized_instruction_tokens:
-            if token in self.not_word_tokens or token in stop_words:
+            if (
+                token in self.not_word_tokens
+                or token in stop_words
+                or token in self.words_to_remove
+            ):
                 continue
 
             if (
                 token not in ingredients_in_instruction
+                and len(token) > 0
                 and token.replace("_", " ") in self.mapping
             ):
                 ingredients_in_instruction.append(
                     self.mapping[token.replace("_", " ")].replace(" ", "_")
                 )
 
-        ingredients_in_instruction = [
-            ingredient
-            for ingredient in ingredients_in_instruction
-            if len(ingredient) > 0
-        ]
         return ingredients_in_instruction

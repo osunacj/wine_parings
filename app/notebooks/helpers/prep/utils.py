@@ -32,9 +32,10 @@ def modify_vocabulary():
         ingredient for ingredient in ingredients if ingredient not in bert_vocab
     ]
 
-    with bert_vocab_path.open(mode="a") as f:
-        f.write("\n")
-        f.write("\n".join(ingredients_to_add))
+    if len(ingredients_to_add) > 0:
+        with bert_vocab_path.open(mode="a") as f:
+            f.write("\n")
+            f.write("\n".join(ingredients_to_add))
 
     print(f"\nA total of {len(ingredients_to_add)} were added to vocab.")
 

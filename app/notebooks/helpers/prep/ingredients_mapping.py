@@ -344,7 +344,6 @@ ingredients_mappings = {
     "tofu": "tofu",
     "tomato": "tomato",
     "toothpick": "toothpick",
-    "top": "top",
     "topping": "topping",
     "tortilla": "tortilla",
     "truffle": "truffle",

@@ -70,8 +70,8 @@ def read_data_and_parse_columns():
     return df
 
 
-def extract_ingredients(all_raw_ingredients):
-    if ingredients_mappings:
+def extract_ingredients(all_raw_ingredients, force=False):
+    if ingredients_mappings and not force:
         return ingredients_mappings
 
     list_ingredients = []
@@ -120,9 +120,11 @@ def main():
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
-    clean_ingredients = extract_ingredients(food_dataset.ingredients.to_numpy())
+    food_dataset = food_dataset.loc[:1000, :]
 
-    food_dataset = food_dataset.loc[:3000, :]
+    clean_ingredients = extract_ingredients(
+        food_dataset.ingredients.to_numpy(), force=True
+    )
 
     normalized_instructions_token, ingredients_in_instructions = normalize_instructions(
         food_dataset["steps"].to_numpy()
@@ -140,7 +142,7 @@ def main():
     #     food_dataset["description"].to_numpy()
     # )
 
-    food_dataset.drop(["steps", "description", "ingredients"], inplace=True, axis=1)
+    food_dataset.drop(["steps", "description"], inplace=True, axis=1)
 
     food_dataset.loc[:, "ingredients_in_instructions"] = ingredients_in_instructions
     food_dataset.loc[:, "clean_instructions"] = normalized_instructions_token
