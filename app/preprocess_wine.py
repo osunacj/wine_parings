@@ -85,16 +85,19 @@ def extract_term_frequeuncies_from_bigrams(wine_bigrams, max_threshold, min_thre
     return wine_terms_sorted
 
 
-def normalize_wine_descriptors_as_ingredients(wine_descriptors: list = []) -> dict:
+def normalize_wine_descriptors_as_ingredients(
+    wine_descriptors: list = [], force=False
+) -> dict:
     descriptor_normalizer = RecipeNormalizer(lemmatization_types=["NOUN", "ADJ"])
 
-    if list(wine_descriptors_mapping) and not wine_descriptors:
+    if list(wine_descriptors_mapping) and not wine_descriptors and not force:
         # if normalized descriptors exits
         return wine_descriptors_mapping
 
     # If wine_descriptors_mapping exists or is empty descriptors will be added
+    wine_descriptors = [value[0] for value in wine_terms_mappings.values()]
     normalized_descriptors = descriptor_normalizer.normalize_ingredients(
-        [*wine_descriptors, *list(wine_terms_mappings)]
+        [*wine_descriptors, *wine_descriptors]
     )
 
     normalized_descriptors.update(wine_descriptors_mapping)
@@ -160,7 +163,7 @@ def main():
 
     wine_dataframe = wine_dataframe.loc[:3000, :]
 
-    normalized_descriptors = normalize_wine_descriptors_as_ingredients()
+    normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=True)
 
     reviews = wine_dataframe.Description.to_numpy()
 

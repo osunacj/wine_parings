@@ -2,3 +2,5 @@ app/data/
 __pycache__/
 checkpoint-final/
 temp/
+app/notebooks/helpers/models/food_similarity_dict.pkl
+app/notebooks/helpers/models/food_embeddings_dict_foodbert.pkl

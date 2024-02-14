@@ -215,5 +215,54 @@ all_nonaromas = pd.concat(taste_dataframes, axis=1)
 all_nonaromas.columns = core_tastes
 
 
+def distances():
+    from scipy import spatial
+
+    core_tastes_revised = {'weight': ['heavy', 'cassoulet', 'cassoulet', 'full_bodied', 'thick', 'milk', 'fat', 'mincemeat', 'steak', 'bold', 'pizza', 'pasta', 'creamy', 'bread'],
+                        'sweet': ['sweet', 'sugar', 'cake', 'mango', 'stevia'], 
+                        'acid': ['acid', 'sour', 'vinegar', 'yoghurt', 'cevich', 'cevich'],
+                        'salt': ['salty', 'salty', 'parmesan', 'oyster', 'pizza', 'bacon', 'cured_meat', 'sausage', 'potato_chip'], 
+                        'piquant': ['spicy'], 
+                        'fat': ['fat', 'fried', 'creamy', 'cassoulet', 'foie_gras', 'buttery', 'cake', 'foie_gras', 'sausage', 'brie', 'carbonara'], 
+                        'bitter': ['bitter', 'kale']
+                        }
+
+    average_taste_vecs = dict()
+    core_tastes_distances = dict()
+    for taste, keywords in core_tastes_revised.items():
+        
+        all_keyword_vecs = []
+        for keyword in keywords:
+            c_vec = word_vectors[keyword]
+            # Get the vector for each of the keywords
+            all_keyword_vecs.append(c_vec)
+        
+            # Get the average vector of keywords for each taste
+        avg_taste_vec = np.average(all_keyword_vecs, axis=0)
+        average_taste_vecs[taste] = avg_taste_vec
+            
+        # Get the cosine distance between the ingredient and the average core taste for each ingredient in the food data
+        taste_distances = dict()
+        for k, v in foods_vecs.items():
+            similarity = 1- spatial.distance.cosine(avg_taste_vec, v)
+            taste_distances[k] = similarity
+            
+        core_tastes_distances[taste] = taste_distances    
+    
+    food_nonaroma_infos = dict()
+    # for each core taste, identify the food item that is farthest and closest. We will need this to create a normalized scale between 0 and 1
+    for key, value in core_tastes_revised.items():
+        dict_taste = dict()
+        farthest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        farthest_distance = core_tastes_distances[key][farthest]
+        closest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        closest_distance = core_tastes_distances[key][closest]
+        print(key, farthest, closest)
+        dict_taste['farthest'] = farthest_distance
+        dict_taste['closest'] = closest_distance
+        dict_taste['average_vec'] = average_taste_vecs[key]
+        food_nonaroma_infos[key] = dict_taste
+        
+
 if __name__ == "__main__":
     main()

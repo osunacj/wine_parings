@@ -361,6 +361,7 @@ ingredients_mappings = {
     "walnuts": "walnuts",
     "water": "water",
     "wheat": "wheat",
+    "whipped": "whipped",
     "white": "white",
     "whole": "whole",
     "wine": "wine",

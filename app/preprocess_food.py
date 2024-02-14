@@ -120,7 +120,7 @@ def main():
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
-    food_dataset = food_dataset.loc[:1000, :]
+    food_dataset = food_dataset.loc[:3000, :]
 
     clean_ingredients = extract_ingredients(
         food_dataset.ingredients.to_numpy(), force=True

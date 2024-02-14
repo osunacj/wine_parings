@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from collections import defaultdict, Counter
+from scipy import spatial
 from sklearn.decomposition import PCA
 import random
 import torch
@@ -28,13 +29,14 @@ core_tastes = [
 all_ingredients = get_all_ingredients(as_list=True)
 
 
-def get_wine_and_ingredients_reviews():
+def get_wine_dataframe():
     wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv")
-    wine_reviews = wine_dataset.loc[:, "clean_descriptions"].to_numpy()
-    ingredients_in_reviews = wine_dataset.loc[:, "descriptors_in_reviews"].to_numpy()[
-        :50
-    ]
-    return wine_reviews, ingredients_in_reviews
+    return wine_dataset
+
+
+def get_food_dataframe():
+    food_dataset = pd.read_csv("./app/data/test/reduced_food.csv")
+    return food_dataset
 
 
 def _random_sample_with_min_count(population, k):
@@ -45,11 +47,19 @@ def _random_sample_with_min_count(population, k):
 
 
 def _generate_food_sentence_dict():
-    wine_reviews, ingredients_in_reviews = get_wine_and_ingredients_reviews()
+    wine_dataset = get_wine_dataframe()
+    wine_reviews = wine_dataset["clean_descriptions"].to_numpy()
+    ingredients_in_reviews = wine_dataset["descriptors_in_reviews"].to_numpy()
+
+    food_dataset = get_food_dataframe()
+    food_instructions = food_dataset["clean_instructions"].to_numpy()
+    ingredients_in_instructions = food_dataset["ingredients_in_instructions"]
 
     # add food reviews here
-    instruction_sentences = wine_reviews
-    ingredients_in_sentences = ingredients_in_reviews
+    instruction_sentences = np.concatenate((wine_reviews, food_instructions))
+    ingredients_in_sentences = np.concatenate(
+        (ingredients_in_reviews, ingredients_in_instructions)
+    )
 
     food_to_sentences_dict = defaultdict(list)
     for sentence, ingredients_in_sentence in zip(
@@ -94,17 +104,17 @@ def sample_random_sentence_dict(max_sentence_count):
 
 def _map_ingredients_to_input_ids():
     model = PredictionModel()
-    ingredient_ids = model.tokenizer.convert_tokens_to_ids(all_ingredients)
-    ingredient_ids_dict = dict(zip(all_ingredients, ingredient_ids))
+    ingredient_ids = model.tokenizer.convert_tokens_to_ids(all_ingredients)  # type: ignore
+    ingredient_ids_dict = dict(zip(all_ingredients, ingredient_ids))  # type: ignore
 
     return ingredient_ids_dict
 
 
-def generate_food_embedding_dict(max_sentence_count=50):
+def generate_food_embedding_dict(max_sentence_count=150, force=False):
     food_to_embeddings_dict_path = Path(
         f"./app/notebooks/helpers/models/food_embeddings_dict_foodbert.pkl"
     )
-    if food_to_embeddings_dict_path.exists():
+    if food_to_embeddings_dict_path.exists() and not force:
         with food_to_embeddings_dict_path.open("rb") as f:
             food_to_embeddings_dict = pickle.load(f)
 
@@ -170,12 +180,9 @@ def get_taste_of_ingredient(ingredient):
     return taste
 
 
-def construct_taste_ingredient_embeddings():
-    food_to_embeddings_dict = generate_food_embedding_dict()
-
-    wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv")
-    descriptors_in_reviews = wine_dataset.loc[:, "descriptors_in_reviews"].to_numpy()
-
+def construct_taste_ingredient_embeddings(
+    food_to_embeddings_dict, descriptors_in_reviews
+):
     constructor = {}
     for core_taste in core_tastes:
         constructor[core_taste + "_descriptors"] = []
@@ -251,6 +258,7 @@ def wine_varieties(dataframe: pd.DataFrame):
 
     taste_words_dataframes = []
     taste_variety_dataframes = []
+    average_variety_vec = []
 
     for taste in core_tastes:
 
@@ -281,12 +289,13 @@ def wine_varieties(dataframe: pd.DataFrame):
 
             top_n_words = get_top_words_in_variety(wines_in_variety, taste, n=50)
 
+            # average vector of the wine for a given taste and variety
             wine_variety_vectors.append(average_variety_vec)
             wine_variety_top_words.append(top_n_words)
 
-        if taste != "aroma":
+        if taste != "aroma" and type(average_variety_vec) == np.ndarray:
             pca = PCA(3)
-            wine_variety_vectors = pca.fit_transform(wine_variety_vectors)
+            wine_variety_vectors = pca.fit_transform(wine_variety_vectors)  # type: ignore
             wine_variety_vectors = pd.DataFrame(
                 wine_variety_vectors,
                 index=wine_varieties_index,
@@ -307,21 +316,92 @@ def wine_varieties(dataframe: pd.DataFrame):
         wine_variety_descriptions.sort_index(inplace=True)
 
         taste_variety_dataframes.append(wine_variety_vectors)
+        taste_words_dataframes.append(wine_variety_descriptions)
 
+    taste_words_dataframes = pd.concat(taste_words_dataframes, axis=1)
+    taste_words_dataframes.set_index("index", inplace=True)
+    taste_words_dataframes.dropna(inplace=True)
+    taste_words_dataframes.to_csv(
+        "./app/notebooks/helpers/temp/wine_variety_descriptors.csv"
+    )
     wines = pd.concat(taste_variety_dataframes, axis=1, ignore_index=False)
+    wines.to_csv("./app/data/production/wine_production.csv")
     return wines
+
+
+def generate_similiarity_dict(
+    dataframe: pd.DataFrame, food_to_embeddings_dict, force=False
+):
+    food_similarity_dict_path = Path(
+        f"./app/notebooks/helpers/models/food_similarity_dict.pkl"
+    )
+
+    if food_similarity_dict_path.exists() and not force:
+        with food_similarity_dict_path.open("rb") as f:
+            food_nonaroma_infos = pickle.load(f)
+            return food_nonaroma_infos
+
+    core_tastes_distances = dict()
+    avg_taste_embeddings = average_taste_embeddings(dataframe)
+
+    for taste in core_tastes:
+        taste_distances = dict()
+        for food, embedding in food_to_embeddings_dict.items():
+            ingredient_taste = get_taste_of_ingredient(food)
+            if type(embedding) == np.ndarray and taste == ingredient_taste:
+                similarity = 1 - spatial.distance.cosine(
+                    avg_taste_embeddings[taste],
+                    np.average(
+                        embedding, axis=0  # type: ignore
+                    ),  # type: ignore
+                )  # type: ignore
+                taste_distances[food] = similarity
+        core_tastes_distances[taste] = taste_distances
+
+    food_nonaroma_infos = dict()
+    # for each core taste, identify the food item that is farthest and closest. We will need this to create a normalized scale between 0 and 1
+    for key in core_tastes:
+        dict_taste = dict()
+        farthest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        farthest_distance = core_tastes_distances[key][farthest]
+        closest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        closest_distance = core_tastes_distances[key][closest]
+        print(key, farthest, closest)
+        dict_taste["farthest"] = farthest_distance
+        dict_taste["closest"] = closest_distance
+        dict_taste["average_vec"] = avg_taste_embeddings[key]
+        food_nonaroma_infos[key] = dict_taste
+
+    with food_similarity_dict_path.open("wb") as f:
+        pickle.dump(food_nonaroma_infos, f)
+
+    return food_nonaroma_infos
 
 
 def main():
     modify_vocabulary()
-    wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv")
+    wine_dataset = get_wine_dataframe()
+    descriptors_in_reviews = wine_dataset["descriptors_in_reviews"].to_numpy()
 
-    embeddings_dataframe = construct_taste_ingredient_embeddings()
+    food_to_embeddings_dict = generate_food_embedding_dict(
+        max_sentence_count=130, force=True
+    )
 
-    wine_df = pd.concat([wine_dataset, embeddings_dataframe], axis=1)
+    wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
+        food_to_embeddings_dict, descriptors_in_reviews
+    )
+
+    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
     wines_varieties = wine_varieties(dataframe=wine_df)
 
-    wines_varieties.to_csv("./app/data/production/wine_production.csv")
+    food_dataset = get_food_dataframe()
+    ingredients_in_instructions = food_dataset["ingredients_in_instructions"].to_numpy()
+    food_embeddings_dataframe = construct_taste_ingredient_embeddings(
+        food_to_embeddings_dict, ingredients_in_instructions
+    )
+    core_tastes_distances = generate_similiarity_dict(
+        food_embeddings_dataframe, food_to_embeddings_dict, force=True
+    )
 
 
 if __name__ == "__main__":

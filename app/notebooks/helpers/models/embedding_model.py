@@ -54,34 +54,3 @@ class PredictionModel:
         food_embedding = embeddings_flat[ingredient_ids_flat == food_id].cpu().numpy()
 
         return food_embedding[0]
-
-
-def _merge_synonmys(food_to_embeddings_dict, max_sentence_count):
-    synonmy_replacements_path = Path(
-        "foodbert_embeddings/data/synonmy_replacements.json"
-    )
-    if synonmy_replacements_path.exists():
-        with synonmy_replacements_path.open() as f:
-            synonmy_replacements = json.load(f)
-    else:
-        synonmy_replacements = {}
-
-    merged_dict = defaultdict(list)
-    # Merge ingredients
-    for key, value in food_to_embeddings_dict.items():
-        if key in synonmy_replacements:
-            key_to_use = synonmy_replacements[key]
-        else:
-            key_to_use = key
-
-        merged_dict[key_to_use].append(value)
-
-    merged_dict = {k: np.concatenate(v) for k, v in merged_dict.items()}
-    # When embedding count exceeds maximum allowed, reduce back to requested count
-    for key, value in merged_dict.items():
-        if len(value) > max_sentence_count:
-            index = np.random.choice(value.shape[0], max_sentence_count, replace=False)
-            new_value = value[index]
-            merged_dict[key] = new_value
-
-    return merged_dict
