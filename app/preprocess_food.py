@@ -9,6 +9,7 @@ from tqdm import tqdm
 from notebooks.helpers.prep.normalization import RecipeNormalizer
 from notebooks.helpers.prep.frequencies import FrequencyExtractor
 from notebooks.helpers.prep.ingredients_mapping import ingredients_mappings
+from notebooks.helpers.prep.utils import read_and_write_ingredients
 
 BASE_PATH = "./app/data"
 
@@ -63,6 +64,7 @@ def read_data_and_parse_columns():
             "nutrition",
             "n_steps",
             "n_ingredients",
+            "id",
         ],
         inplace=True,
         axis=1,
@@ -117,6 +119,7 @@ def normalize_instructions(instructions_list):
 
 
 def main():
+    ready_ingredients = False
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
@@ -126,30 +129,34 @@ def main():
         food_dataset.ingredients.to_numpy(), force=True
     )
 
-    normalized_instructions_token, ingredients_in_instructions = normalize_instructions(
-        food_dataset["steps"].to_numpy()
-    )
+    # read_and_write_ingredients(clean_ingredients)
 
-    f_extractor = FrequencyExtractor(
-        clean_sentences=normalized_instructions_token,
-        clean_ingredients=clean_ingredients,
-        type="food",
-    )
-    f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
+    if ready_ingredients:
 
-    # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
-    # normalized_description_token, _ = normalize_instructions(
-    #     food_dataset["description"].to_numpy()
-    # )
+        normalized_instructions_token, ingredients_in_instructions = (
+            normalize_instructions(food_dataset["steps"].to_numpy())
+        )
 
-    food_dataset.drop(["steps", "description"], inplace=True, axis=1)
+        f_extractor = FrequencyExtractor(
+            clean_sentences=normalized_instructions_token,
+            clean_ingredients=clean_ingredients,
+            type="food",
+        )
+        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
 
-    food_dataset.loc[:, "ingredients_in_instructions"] = ingredients_in_instructions
-    food_dataset.loc[:, "clean_instructions"] = normalized_instructions_token
-    # food_dataset["clean_description"] = normalized_description_token
-    # food_dataset["clean_name"] = normalized_name_token
+        # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
+        # normalized_description_token, _ = normalize_instructions(
+        #     food_dataset["description"].to_numpy()
+        # )
 
-    food_dataset.to_csv("./app/data/test/reduced_food.csv", index_label=False)
+        food_dataset.drop(["steps", "description"], inplace=True, axis=1)
+
+        food_dataset.loc[:, "ingredients_in_instructions"] = ingredients_in_instructions
+        food_dataset.loc[:, "clean_instructions"] = normalized_instructions_token
+        # food_dataset["clean_description"] = normalized_description_token
+        # food_dataset["clean_name"] = normalized_name_token
+
+        food_dataset.to_csv("./app/data/test/reduced_food.csv", index_label=False)
 
 
 if __name__ == "__main__":

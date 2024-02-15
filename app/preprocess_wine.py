@@ -161,7 +161,7 @@ def main():
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[:3000, :]
+    wine_dataframe = wine_dataframe.loc[:5000, :]
 
     normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=True)
 
