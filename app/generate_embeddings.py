@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from typing import Union, List, Dict
 from collections import defaultdict, Counter
 from scipy import spatial
 from sklearn.decomposition import PCA
@@ -11,7 +12,10 @@ import pickle
 
 from notebooks.helpers.models.embedding_model import PredictionModel
 from notebooks.helpers.prep.utils import get_all_ingredients, modify_vocabulary
-from notebooks.helpers.prep.wine_mapping_values import wine_terms_mappings
+from notebooks.helpers.prep.wine_mapping_values import (
+    wine_terms_mappings,
+    food_terms_mappings,
+)
 from notebooks.helpers.prep.synonmy_replacements import synonyms
 
 core_tastes = [
@@ -27,6 +31,7 @@ core_tastes = [
 ]
 
 all_ingredients = get_all_ingredients(as_list=True)
+food_terms_map = {**wine_terms_mappings, **food_terms_mappings}
 
 
 def get_wine_dataframe():
@@ -170,18 +175,21 @@ def generate_food_embedding_dict(max_sentence_count=150, force=False):
     return food_to_embeddings_dict
 
 
-def get_taste_of_ingredient(ingredient):
+def get_taste_of_ingredient(ingredient, food):
     ingredient = ingredient.replace("_", " ")
     taste = "flavor"
 
-    if ingredient in wine_terms_mappings:
+    if ingredient in wine_terms_mappings and not food:
         taste = wine_terms_mappings[ingredient][2]
+
+    if ingredient in food_terms_map and food:
+        taste = food_terms_map[ingredient][2]
 
     return taste
 
 
 def construct_taste_ingredient_embeddings(
-    food_to_embeddings_dict, descriptors_in_reviews
+    food_to_embeddings_dict, descriptors_in_reviews, food
 ):
     constructor = {}
     for core_taste in core_tastes:
@@ -197,9 +205,10 @@ def construct_taste_ingredient_embeddings(
             embeddings = []
             ingredients = []
             for ingredient in eval(review):
-                taste = get_taste_of_ingredient(ingredient)
+                taste = get_taste_of_ingredient(ingredient, food)
                 avg_embedding = np.nan
                 if ingredient in food_to_embeddings_dict:
+                    # average of all the embeddings of ingredient
                     avg_embedding = np.average(
                         food_to_embeddings_dict.get(ingredient), axis=0  # type: ignore
                     )  # type: ignore
@@ -352,10 +361,11 @@ def generate_similiarity_dict(
     for taste in core_tastes:
         taste_distances = dict()
         for food, embedding in food_to_embeddings_dict.items():
-            ingredient_taste = get_taste_of_ingredient(food)
+            ingredient_taste = get_taste_of_ingredient(food, True)
             if type(embedding) == np.ndarray and taste == ingredient_taste:
-                similarity = 1 - spatial.distance.cosine(
+                similarity = spatial.distance.cosine(
                     avg_taste_embeddings[taste],
+                    # average of all the embeddings of ingredient food
                     np.average(
                         embedding, axis=0  # type: ignore
                     ),  # type: ignore
@@ -367,9 +377,9 @@ def generate_similiarity_dict(
     # for each core taste, identify the food item that is farthest and closest. We will need this to create a normalized scale between 0 and 1
     for key in core_tastes:
         dict_taste = dict()
-        farthest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        farthest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
         farthest_distance = core_tastes_distances[key][farthest]
-        closest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
+        closest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
         closest_distance = core_tastes_distances[key][closest]
         print(key, farthest, closest)
         dict_taste["farthest"] = farthest_distance
@@ -393,7 +403,7 @@ def main():
     )
 
     wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
-        food_to_embeddings_dict, descriptors_in_reviews
+        food_to_embeddings_dict, descriptors_in_reviews, food=False
     )
 
     wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
@@ -402,7 +412,7 @@ def main():
     food_dataset = get_food_dataframe()
     ingredients_in_instructions = food_dataset["ingredients_in_instructions"].to_numpy()
     food_embeddings_dataframe = construct_taste_ingredient_embeddings(
-        food_to_embeddings_dict, ingredients_in_instructions
+        food_to_embeddings_dict, ingredients_in_instructions, food=True
     )
     core_tastes_distances = generate_similiarity_dict(
         food_embeddings_dataframe, food_to_embeddings_dict, force=True

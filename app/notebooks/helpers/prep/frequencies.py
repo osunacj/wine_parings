@@ -4,6 +4,8 @@ from tqdm import tqdm
 from .utils import read_and_write_ingredients
 import re
 from nltk.corpus import stopwords
+from .ingredients_mapping import ingredients_mappings
+from .wine_descriptors_mapping import wine_descriptors_mapping
 
 
 stop_words = set(stopwords.words("english"))
@@ -12,9 +14,11 @@ not_words = [".", ",", "!", "?", " ", ";", ":", "-"]
 
 class FrequencyExtractor:
     def __init__(self, clean_ingredients: dict, clean_sentences: list, type="food"):
-        self.clean_ingredients = clean_ingredients
         self.clean_sentences = clean_sentences
         self.type = type
+        self.clean_ingredients = {**clean_ingredients, **wine_descriptors_mapping}
+        if self.type == "food":
+            self.clean_ingredients = {**clean_ingredients, **ingredients_mappings}
 
     def count_all_ingredients(
         self,
@@ -84,6 +88,4 @@ class FrequencyExtractor:
                 "wine_descriptors_mapping",
             )
         else:
-            read_and_write_ingredients(
-                to_keep_ingredients,
-            )
+            read_and_write_ingredients(to_keep_ingredients, append_ingredients=False)

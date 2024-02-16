@@ -212,3 +212,17 @@ def sort_by_aroma_similarity(df, food_aroma):
     )
     df.sort_values(by=["aroma_distance"], ascending=True, inplace=True)
     return df
+
+
+def retrieve_pairing_type_info(wine_recommendations, pairing_type):
+    pairings = wine_recommendations.loc[
+        wine_recommendations["pairing_type"] == pairing_type
+    ].head(4)
+    wine_names = list(pairings.index)
+    recommendation_nonaromas = wine_recommendations.loc[wine_names, :]
+    pairing_nonaromas = recommendation_nonaromas[
+        ["sweet", "acid", "salt", "piquant", "fat", "bitter"]
+    ].to_dict("records")
+    pairing_body = list(recommendation_nonaromas["weight"])
+    # impactful_descriptors = list(pairings["most_impactful_descriptors"])
+    return wine_names, pairing_nonaromas, pairing_body

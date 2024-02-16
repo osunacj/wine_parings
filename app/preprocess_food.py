@@ -119,17 +119,20 @@ def normalize_instructions(instructions_list):
 
 
 def main():
-    ready_ingredients = False
+    ready_ingredients = True
+    force = False
+
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
-    food_dataset = food_dataset.loc[:3000, :]
+    food_dataset = food_dataset.loc[:7000, :]
 
     clean_ingredients = extract_ingredients(
-        food_dataset.ingredients.to_numpy(), force=True
+        food_dataset.ingredients.to_numpy(), force=force
     )
 
-    # read_and_write_ingredients(clean_ingredients)
+    if not ready_ingredients:
+        read_and_write_ingredients(clean_ingredients)
 
     if ready_ingredients:
 
@@ -156,7 +159,13 @@ def main():
         # food_dataset["clean_description"] = normalized_description_token
         # food_dataset["clean_name"] = normalized_name_token
 
-        food_dataset.to_csv("./app/data/test/reduced_food.csv", index_label=False)
+        food_dataset.to_csv(
+            "./app/data/test/reduced_food.csv",
+            index_label=False,
+            mode="a",
+            header=False,
+            index=False,
+        )
 
 
 if __name__ == "__main__":

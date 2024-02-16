@@ -149,11 +149,14 @@ def tokenize_corpus_for_term_extraction(corpus) -> list:
 
 
 def main():
+    ready_descriptors = True
     # wine_dataframe = merge_all_wine_files(write=True)
     # wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
     # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
-    wine_dataframe = pd.read_csv("./app/data/production/wines.csv").dropna(
-        subset=["Description"]
+    wine_dataframe = (
+        pd.read_csv("./app/data/production/wines.csv")
+        .dropna(subset=["Description"])
+        .reset_index()
     )
     # all_wine_corpus = " ".join(
     #     str(sentence) for sentence in wine_dataframe.Description.to_numpy()
@@ -161,26 +164,33 @@ def main():
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[:5000, :]
+    wine_dataframe = wine_dataframe.loc[:7000, :]
 
     normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=True)
 
-    reviews = wine_dataframe.Description.to_numpy()
+    if ready_descriptors:
+        reviews = wine_dataframe.Description.to_numpy()
 
-    clean_reviews, ingredients_in_reviews = normalize_wine_reviews(
-        reviews, normalized_descriptors
-    )
+        clean_reviews, ingredients_in_reviews = normalize_wine_reviews(
+            reviews, normalized_descriptors
+        )
 
-    frequency_extractor = FrequencyExtractor(
-        normalized_descriptors, clean_reviews, "wine"
-    )
-    frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
+        frequency_extractor = FrequencyExtractor(
+            normalized_descriptors, clean_reviews, "wine"
+        )
+        frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
 
-    wine_dataframe.drop(["Description"], axis=1, inplace=True)
-    wine_dataframe["clean_descriptions"] = clean_reviews
-    wine_dataframe.loc[:, "descriptors_in_reviews"] = ingredients_in_reviews
+        wine_dataframe.drop(["Description"], axis=1, inplace=True)
+        wine_dataframe["clean_descriptions"] = clean_reviews
+        wine_dataframe.loc[:, "descriptors_in_reviews"] = ingredients_in_reviews
 
-    wine_dataframe.to_csv("./app/data/test/reduced_wines.csv", index_label=False)
+        wine_dataframe.to_csv(
+            "./app/data/test/reduced_wines.csv",
+            index_label=False,
+            # mode="a",
+            # header=False,
+            # index=False,
+        )
 
 
 if __name__ == "__main__":

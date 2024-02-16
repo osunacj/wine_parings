@@ -9,6 +9,7 @@ from notebooks.helpers.prep.pairing_rules import (
     nonaroma_rules,
     congruent_or_contrasting,
     sort_by_aroma_similarity,
+    retrieve_pairing_type_info,
 )
 
 
@@ -134,6 +135,28 @@ def get_food_attributes(food_ingredients):
     return food_attributes, average_food_embedding
 
 
+def get_pairings_type(wine_recommendations):
+    try:
+        (
+            contrasting_wines,
+            contrasting_nonaromas,
+            contrasting_body,
+            # impactful_descriptors_contrasting,
+        ) = retrieve_pairing_type_info(wine_recommendations, "contrasting")
+    except:
+        contrasting_wines = []
+
+    try:
+        (
+            congruent_wines,
+            congruent_nonaromas,
+            congruent_body,
+            impactful_descriptors_congruent,
+        ) = retrieve_pairing_type_info(wine_recommendations, "congruent")
+    except:
+        congruent_wines = []
+
+
 def main():
     hotdog = [
         "hotdog",
@@ -161,29 +184,6 @@ def main():
     # )
 
     # see if there are any contrasting suggestions
-    try:
-        (
-            contrasting_wines,
-            contrasting_nonaromas,
-            contrasting_body,
-            impactful_descriptors_contrasting,
-        ) = retrieve_pairing_type_info(
-            wine_recommendations, wine_variety_vectors, "contrasting"
-        )
-    except:
-        contrasting_wines = []
-
-    try:
-        (
-            congruent_wines,
-            congruent_nonaromas,
-            congruent_body,
-            impactful_descriptors_congruent,
-        ) = retrieve_pairing_type_info(
-            wine_recommendations, wine_variety_vectors, "congruent"
-        )
-    except:
-        congruent_wines = []
 
 
 if __name__ == "__main__":
