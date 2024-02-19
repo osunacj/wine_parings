@@ -350,6 +350,13 @@ def generate_similiarity_dict(
         f"./app/notebooks/helpers/models/food_similarity_dict.pkl"
     )
 
+    food_tastes_dict_path = Path(f"./app/notebooks/helpers/models/food_taste_dict.pkl")
+
+    if food_tastes_dict_path.exists() and not force:
+        with food_tastes_dict_path.open("rb") as f:
+            core_tastes_distances = pickle.load(f)
+            return core_tastes_distances
+
     if food_similarity_dict_path.exists() and not force:
         with food_similarity_dict_path.open("rb") as f:
             food_nonaroma_infos = pickle.load(f)
@@ -363,6 +370,8 @@ def generate_similiarity_dict(
         for food, embedding in food_to_embeddings_dict.items():
             ingredient_taste = get_taste_of_ingredient(food, True)
             if type(embedding) == np.ndarray and taste == ingredient_taste:
+                # Cosine Distance measures how different they are, greater the more different.
+                # Cosine Similarity measures how sim they are, the greater the more similar they are.
                 similarity = spatial.distance.cosine(
                     avg_taste_embeddings[taste],
                     # average of all the embeddings of ingredient food
@@ -387,6 +396,9 @@ def generate_similiarity_dict(
         dict_taste["average_vec"] = avg_taste_embeddings[key]
         food_nonaroma_infos[key] = dict_taste
 
+    with food_tastes_dict_path.open("wb") as f:
+        pickle.dump(core_tastes_distances, f)
+
     with food_similarity_dict_path.open("wb") as f:
         pickle.dump(food_nonaroma_infos, f)
 
@@ -402,12 +414,12 @@ def main():
         max_sentence_count=150, force=False
     )
 
-    wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
-        food_to_embeddings_dict, descriptors_in_reviews, food=False
-    )
+    # wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
+    #     food_to_embeddings_dict, descriptors_in_reviews, food=False
+    # )
 
-    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
-    wines_varieties = wine_varieties(dataframe=wine_df)
+    # wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
+    # wines_varieties = wine_varieties(dataframe=wine_df)
 
     food_dataset = get_food_dataframe()
     ingredients_in_instructions = food_dataset["ingredients_in_instructions"].to_numpy()
