@@ -147,7 +147,7 @@ def calculate_food_attributes(average_food_embedding, food_average_distances):
     }
     food_attributes = dict()
     for taste in core_tastes:
-        if taste in ["aroma"]:
+        if taste in ["aroma", "flavor"]:
             continue
 
         similarity = spatial.distance.cosine(
@@ -242,7 +242,12 @@ def main():
         "relish",
     ]
     salmon = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
-    food_attributes, food_tastes_distances = get_food_attributes(salmon)
+
+    dinner = [
+        "curry" "chicken",
+    ]
+
+    food_attributes, food_tastes_distances = get_food_attributes(dinner)
 
     wine_df = get_production_wines()
     wine_recommendations = normalize_production_wines()

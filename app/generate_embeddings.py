@@ -411,15 +411,15 @@ def main():
     descriptors_in_reviews = wine_dataset["descriptors_in_reviews"].to_numpy()
 
     food_to_embeddings_dict = generate_food_embedding_dict(
-        max_sentence_count=150, force=False
+        max_sentence_count=130, force=False
     )
 
-    # wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
-    #     food_to_embeddings_dict, descriptors_in_reviews, food=False
-    # )
+    wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
+        food_to_embeddings_dict, descriptors_in_reviews, food=False
+    )
 
-    # wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
-    # wines_varieties = wine_varieties(dataframe=wine_df)
+    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
+    wines_varieties = wine_varieties(dataframe=wine_df)
 
     food_dataset = get_food_dataframe()
     ingredients_in_instructions = food_dataset["ingredients_in_instructions"].to_numpy()

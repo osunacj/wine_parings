@@ -221,7 +221,7 @@ def retrieve_pairing_type_info(wine_recommendations, pairing_type, top_n, wine_d
     wine_names = list(pairings.index)
     recommendation_nonaromas = wine_df.loc[wine_names, :]
     pairing_nonaromas = recommendation_nonaromas[
-        ["sweet", "acid", "salt", "piquant", "fat", "bitter", "flavor"]
+        ["sweet", "acid", "salt", "piquant", "fat", "bitter"]
     ].to_dict("records")
     pairing_body = list(recommendation_nonaromas["weight"])
     # impactful_descriptors = list(pairings["most_impactful_descriptors"])

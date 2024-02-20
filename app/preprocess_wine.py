@@ -90,9 +90,10 @@ def normalize_wine_descriptors_as_ingredients(
 ) -> dict:
     descriptor_normalizer = RecipeNormalizer(lemmatization_types=["NOUN", "ADJ"])
 
-    if list(wine_descriptors_mapping) and not wine_descriptors and not force:
+    normalized_descriptors = wine_descriptors_mapping
+    if wine_descriptors_mapping and not wine_descriptors and not force:
         # if normalized descriptors exits
-        return wine_descriptors_mapping
+        return normalized_descriptors
 
     # If wine_descriptors_mapping exists or is empty descriptors will be added
     wine_descriptors = [value[0] for value in wine_terms_mappings.values()]
@@ -164,9 +165,9 @@ def main():
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[:7000, :]
+    wine_dataframe = wine_dataframe.loc[:25000, :]
 
-    normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=True)
+    normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=False)
 
     if ready_descriptors:
         reviews = wine_dataframe.Description.to_numpy()
@@ -187,9 +188,8 @@ def main():
         wine_dataframe.to_csv(
             "./app/data/test/reduced_wines.csv",
             index_label=False,
-            # mode="a",
-            # header=False,
-            # index=False,
+            mode="a",
+            header=False,
         )
 
 
