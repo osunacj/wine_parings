@@ -31,16 +31,19 @@ core_tastes = [
 ]
 
 all_ingredients = get_all_ingredients(as_list=True)
-food_terms_map = {**wine_terms_mappings, **food_terms_mappings}
+food_terms_map = {**food_terms_mappings}
 
 
 def get_wine_dataframe():
     wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv")
+    wine_dataset.drop(["index"], inplace=True, axis=1)
+    wine_dataset.reset_index(inplace=True, drop=True)
     return wine_dataset
 
 
 def get_food_dataframe():
     food_dataset = pd.read_csv("./app/data/test/reduced_food.csv")
+    food_dataset.reset_index(inplace=True, drop=True)
     return food_dataset
 
 
@@ -315,7 +318,7 @@ def wine_varieties(dataframe: pd.DataFrame):
             wine_variety_vectors.append(average_variety_vec)
             wine_variety_top_words.append(top_n_words)
 
-        if taste != "aroma" and type(average_variety_vec) == np.ndarray:
+        if taste not in ["aroma"] and type(average_variety_vec) == np.ndarray:
             pca = PCA(1)
             wine_variety_vectors = pca.fit_transform(wine_variety_vectors)  # type: ignore
             wine_variety_vectors = pd.DataFrame(
@@ -325,7 +328,7 @@ def wine_varieties(dataframe: pd.DataFrame):
             )
         else:
             wine_variety_vectors = pd.Series(
-                wine_variety_vectors, index=wine_varieties_index, name="aroma"
+                wine_variety_vectors, index=wine_varieties_index, name=f"{taste}"
             )
 
             wine_variety_descriptions = pd.DataFrame(
@@ -340,7 +343,6 @@ def wine_varieties(dataframe: pd.DataFrame):
     wines = pd.concat(taste_variety_dataframes, axis=1, ignore_index=False)
     wines = normalize(wines, cols_to_normalize=core_tastes[1:])
     wines.to_csv("./app/data/production/wine_production.csv")
-    return wines
 
 
 def generate_similiarity_dict(
@@ -366,6 +368,9 @@ def generate_similiarity_dict(
     avg_taste_embeddings = average_taste_embeddings(dataframe)
 
     for taste in core_tastes:
+        if taste in ["aroma"]:
+            continue
+
         taste_distances = dict()
         for food, embedding in food_to_embeddings_dict.items():
             ingredient_taste = get_taste_of_ingredient(food, True)
@@ -385,12 +390,16 @@ def generate_similiarity_dict(
     food_nonaroma_infos = dict()
     # for each core taste, identify the food item that is farthest and closest. We will need this to create a normalized scale between 0 and 1
     for key in core_tastes:
+        if key in ["aroma"]:
+            continue
+
         dict_taste = dict()
         farthest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
         farthest_distance = core_tastes_distances[key][farthest]
         closest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
         closest_distance = core_tastes_distances[key][closest]
-        print(key, farthest, closest)
+        # Closest distance means that the vector is more similar
+        print(f" Taste: {key} Farthest: {farthest} Closest: {closest}")
         dict_taste["farthest"] = farthest_distance
         dict_taste["closest"] = closest_distance
         dict_taste["average_vec"] = avg_taste_embeddings[key]
@@ -401,8 +410,6 @@ def generate_similiarity_dict(
 
     with food_similarity_dict_path.open("wb") as f:
         pickle.dump(food_nonaroma_infos, f)
-
-    return food_nonaroma_infos
 
 
 def main():
@@ -418,15 +425,16 @@ def main():
         food_to_embeddings_dict, descriptors_in_reviews, food=False
     )
 
-    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1)
-    wines_varieties = wine_varieties(dataframe=wine_df)
+    # Need to run these lines to generate clean embeddings for wines
+    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1).reset_index()
+    wine_varieties(dataframe=wine_df)
 
     food_dataset = get_food_dataframe()
     ingredients_in_instructions = food_dataset["ingredients_in_instructions"].to_numpy()
     food_embeddings_dataframe = construct_taste_ingredient_embeddings(
         food_to_embeddings_dict, ingredients_in_instructions, food=True
     )
-    core_tastes_distances = generate_similiarity_dict(
+    generate_similiarity_dict(
         food_embeddings_dataframe, food_to_embeddings_dict, force=True
     )
 

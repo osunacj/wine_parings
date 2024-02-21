@@ -184,7 +184,7 @@ def plot_wine_recommendations(
     number_line_nr = 4
     descriptor_nr = 8
 
-    for wine in range(top_n):
+    for wine in range(min(top_n, len(pairing_wines))):
         make_spider(
             grid,
             spider_nr,

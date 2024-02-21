@@ -80,7 +80,7 @@ ingredients_mappings = {
     "carrot": "carrot",
     "cashew": "cashew",
     "caster sugar": "caster sugar",
-    "catsup": "catsup",
+    "catsup": "ketchup",
     "cauliflower": "cauliflower",
     "cayenne": "cayenne",
     "celery": "celery",
