@@ -1,4 +1,6 @@
 from pathlib import Path
+
+from sympy import Q
 from .ingredients_mapping import ingredients_mappings
 from .wine_descriptors_mapping import wine_descriptors_mapping
 from typing import Union, List, Dict
@@ -199,6 +201,28 @@ def plot_wine_recommendations(
         spider_nr += 1
         number_line_nr += 1
         descriptor_nr += 1
+    plt.show()
+
+
+def plot_food_profile(food_attributes, ingredients):
+
+    plt.figure(figsize=(4, 5), dpi=75)
+
+    food_attrtibutes_value = {
+        taste: value[0] for taste, value in food_attributes.items()
+    }
+    food_attrtibutes_value.pop("weight")
+    grid = gridspec.GridSpec(2, 1, height_ratios=[3, 0.5])
+    make_spider(
+        grid,
+        0,
+        food_attrtibutes_value,
+        "Food Profile",
+        "green",
+        ingredients,
+        food_attrtibutes_value,
+    )
+    plot_number_line(grid, 1, food_attributes.get("weight")[0], dot_color="green")
     plt.show()
 
 

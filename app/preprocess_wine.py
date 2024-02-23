@@ -165,7 +165,7 @@ def main():
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[34000:50000, :]
+    wine_dataframe = wine_dataframe.loc[50000:80000, :]
 
     normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=False)
 
@@ -179,7 +179,7 @@ def main():
         frequency_extractor = FrequencyExtractor(
             normalized_descriptors, clean_reviews, "wine"
         )
-        frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
+        frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=30)
 
         wine_dataframe.drop(["Description"], axis=1, inplace=True)
         wine_dataframe["clean_descriptions"] = clean_reviews

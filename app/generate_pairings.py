@@ -1,3 +1,4 @@
+from calendar import c
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -12,7 +13,7 @@ from notebooks.helpers.prep.pairing_rules import (
     retrieve_pairing_type_info,
 )
 
-from notebooks.helpers.prep.utils import plot_wine_recommendations
+from notebooks.helpers.prep.utils import plot_wine_recommendations, plot_food_profile
 
 core_tastes = [
     "aroma",
@@ -70,11 +71,11 @@ def get_food_taste_distances_info():
 
 def normalize_production_wines():
     wines_df = get_production_wines()
-    wine_weights = wine_weights = {
+    wine_weights = {
         "weight": {1: (0, 0.25), 2: (0.25, 0.45), 3: (0.45, 0.75), 4: (0.75, 1)},
         "sweet": {1: (0, 0.25), 2: (0.25, 0.6), 3: (0.6, 0.75), 4: (0.75, 1)},
-        "acid": {1: (0, 0.15), 2: (0.15, 0.4), 3: (0.4, 0.6), 4: (0.6, 1)},
-        "salt": {1: (0, 0.2), 2: (0.2, 0.4), 3: (0.4, 0.6), 4: (0.6, 1)},
+        "acid": {1: (0, 0.05), 2: (0.05, 0.25), 3: (0.25, 0.5), 4: (0.5, 1)},
+        "salt": {1: (0, 0.15), 2: (0.15, 0.25), 3: (0.25, 0.7), 4: (0.7, 1)},
         "piquant": {1: (0, 0.15), 2: (0.15, 0.3), 3: (0.3, 0.6), 4: (0.6, 1)},
         "fat": {1: (0, 0.25), 2: (0.25, 0.5), 3: (0.5, 0.7), 4: (0.7, 1)},
         "bitter": {1: (0, 0.2), 2: (0.2, 0.37), 3: (0.37, 0.6), 4: (0.6, 1)},
@@ -90,7 +91,7 @@ def normalize_production_wines():
 def minmax_scaler(val, minval, maxval):
     val = max(min(val, maxval), minval)
     normalized_val = (val - minval) / (maxval - minval)
-    return 1 - normalized_val
+    return normalized_val
 
 
 # this function makes sure that a scaled value (between 0 and 1) is returned for a food nonaroma
@@ -106,33 +107,42 @@ def check_in_range(taste_weights, value):
 
 # this function calculates the average embedding of all foods supplied as input
 def calculate_avg_food_vec(
-    food_tastes_distances, food_to_embeddings_dict, food_ingredients: list
+    food_average_distances,
+    food_taste_distances,
+    food_to_embeddings_dict,
+    food_ingredients: list,
 ) -> dict:
     ingredients_tastes = {}
     for core_taste in core_tastes:
         sample_food_vecs = []
+        thresh = (
+            food_average_distances[core_taste]["closest"]
+            - (
+                food_average_distances[core_taste]["closest"]
+                - food_average_distances[core_taste]["farthest"]
+            )
+            / 4
+        )
+        average_vec = food_average_distances[core_taste]["average_vec"]
+
         for ingredient in food_ingredients:
-            if core_taste == "aroma" and ingredient in food_to_embeddings_dict:
-                sample_food_vec = food_to_embeddings_dict[ingredient]
-                sample_food_vecs.append(np.average(sample_food_vec, axis=0))
+            if ingredient not in food_to_embeddings_dict:
+                continue
 
-            if (
-                core_taste != "aroma"
-                and ingredient in food_to_embeddings_dict
-                and ingredient in food_tastes_distances[core_taste]
-            ):
-                sample_food_vec = food_to_embeddings_dict[ingredient]
-                # Get the average embedding of the same ingredient coming from the food dict
-                sample_food_vecs.append(np.average(sample_food_vec, axis=0))
-        # Get the average of all ingredients in a taste.
-        if len(sample_food_vecs) > 0:
-            sample_food_vecs = np.average(sample_food_vecs, axis=0)
-        else:
-            # Compute the distance between the average taste embedding and the food taste embedding if the embedding exists otherwise use the average food aroma
-            sample_food_vecs = ingredients_tastes["aroma"]
+            food_embedding = food_to_embeddings_dict[ingredient]
+            food_embedding = np.average(food_embedding, axis=0)
 
-        ingredients_tastes[core_taste] = sample_food_vecs
-        sample_food_vecs = []
+            if core_taste == "aroma":
+                sample_food_vecs.append(food_embedding)
+            else:
+                if food_taste_distances[core_taste][ingredient] > thresh:
+                    sample_food_vecs.append(food_embedding)
+
+        ingredients_tastes[core_taste] = (
+            np.average(sample_food_vecs, axis=0)
+            if len(sample_food_vecs) > 0
+            else ingredients_tastes["aroma"]
+        )
     return ingredients_tastes
 
 
@@ -146,21 +156,20 @@ def calculate_food_attributes(food_tastes_distances, food_average_distances):
         "piquant": {1: (0, 0.4), 2: (0.4, 0.6), 3: (0.6, 0.8), 4: (0.8, 1)},
         "fat": {1: (0, 0.4), 2: (0.4, 0.5), 3: (0.5, 0.6), 4: (0.6, 1)},
         "bitter": {1: (0, 0.3), 2: (0.3, 0.5), 3: (0.5, 0.65), 4: (0.65, 1)},
-        "flavor": {1: (0, 0.3), 2: (0.3, 0.5), 3: (0.5, 0.65), 4: (0.65, 1)},
     }
     food_attributes = dict()
     for taste in core_tastes:
         if taste in ["aroma", "flavor"]:
             continue
 
-        similarity = spatial.distance.cosine(
+        similarity = 1 - spatial.distance.cosine(
             food_average_distances[taste]["average_vec"], food_tastes_distances[taste]
         )  # type: ignore
         # scale the similarity using our minmax scaler
         scaled_similarity = minmax_scaler(
             similarity,
-            minval=food_average_distances[taste]["closest"],
-            maxval=food_average_distances[taste]["farthest"],
+            minval=food_average_distances[taste]["farthest"],
+            maxval=food_average_distances[taste]["closest"],
         )
         standardized_similarity = check_in_range(
             tastes_weights[taste], scaled_similarity
@@ -175,7 +184,8 @@ def get_food_attributes(food_ingredients):
 
     food_tastes_distances = calculate_avg_food_vec(
         food_ingredients=food_ingredients,
-        food_tastes_distances=food_tastes_distances,
+        food_taste_distances=food_tastes_distances,
+        food_average_distances=food_average_distances,
         food_to_embeddings_dict=food_to_embeddings_dict,
     )
     # The aroma embedding is the average of all the ingredients in the food
@@ -236,27 +246,34 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
 def main():
     hotdog = [
         "hotdog",
+        "sausage",
         "mustard",
         "tomato",
         "onion",
-        "pepperoncini",
-        "gherkin",
+        "pickle",
+        "pepper",
         "celery",
+        "salt",
         "relish",
     ]
-    salmon = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
+    salmon = ["salmon", "dill", "cucumber", "sour_cream"]
 
     dinner = [
-        "carrot",
-        "eggplant",
-        "zucchini",
-        "onion",
-        "asparagus",
-        "mushroom",
+        "roasted_pepper",
+        "linguine",
+        "tomato",
+        "garlic",
+        "anchovie",
+        "olive",
+        "basil",
+        "walnuts",
     ]
-    dessert = ["peach", "pie"]
+    dessert = ["sugar"]
 
-    food_attributes, food_tastes_distances = get_food_attributes(hotdog)
+    ingredients = dessert
+
+    food_attributes, food_tastes_distances = get_food_attributes(ingredients)
+    plot_food_profile(food_attributes=food_attributes, ingredients=ingredients)
 
     wine_df = get_production_wines()
     wine_recommendations = normalize_production_wines()

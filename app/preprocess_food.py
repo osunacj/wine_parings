@@ -125,7 +125,7 @@ def main():
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
-    food_dataset = food_dataset.loc[17000:34000, :]
+    food_dataset = food_dataset.loc[60000:75000, :]
 
     clean_ingredients = extract_ingredients(
         food_dataset.ingredients.to_numpy(), force=force
@@ -145,7 +145,7 @@ def main():
             clean_ingredients=clean_ingredients,
             type="food",
         )
-        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=10)
+        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=30)
 
         # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
         # normalized_description_token, _ = normalize_instructions(
