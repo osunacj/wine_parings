@@ -142,7 +142,7 @@ def tokenize_corpus_for_term_extraction(corpus) -> list:
     phrased_wine_sentences = [wine_trigram_model[line] for line in wine_bigrams]
 
     descriptors_from_corpus = extract_term_frequeuncies_from_bigrams(
-        phrased_wine_sentences, max_threshold=500, min_threshold=15
+        phrased_wine_sentences, max_threshold=500, min_threshold=20
     )
 
     descriptors_from_corpus = [*descriptors_from_corpus, *list(wine_terms_mappings)]
@@ -156,18 +156,17 @@ def main():
     # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
     wine_dataframe = (
         pd.read_csv("./app/data/production/wines.csv")
-        .dropna(subset=["Description"])
+        .dropna(subset=["Description"])  # There are 23000 that are nan
         .reset_index()
     )
+    print(wine_dataframe.shape)
     # all_wine_corpus = " ".join(
     #     str(sentence) for sentence in wine_dataframe.Description.to_numpy()
     # ).lower()
 
     # descriptors_from_corpus = tokenize_corpus_for_term_extraction(all_wine_corpus)
 
-    wine_dataframe = wine_dataframe.loc[50000:80000, :]
-
-    normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=False)
+    normalized_descriptors = normalize_wine_descriptors_as_ingredients(force=True)
 
     if ready_descriptors:
         reviews = wine_dataframe.Description.to_numpy()
@@ -179,7 +178,7 @@ def main():
         frequency_extractor = FrequencyExtractor(
             normalized_descriptors, clean_reviews, "wine"
         )
-        frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=30)
+        frequency_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
 
         wine_dataframe.drop(["Description"], axis=1, inplace=True)
         wine_dataframe["clean_descriptions"] = clean_reviews
@@ -188,8 +187,8 @@ def main():
         wine_dataframe.to_csv(
             "./app/data/test/reduced_wines.csv",
             index_label=False,
-            mode="a",
-            header=False,
+            mode="w",
+            header=True,
         )
 
 

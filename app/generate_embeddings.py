@@ -14,9 +14,9 @@ from notebooks.helpers.models.embedding_model import PredictionModel
 from notebooks.helpers.prep.utils import get_all_ingredients, modify_vocabulary
 from notebooks.helpers.prep.wine_mapping_values import (
     wine_terms_mappings,
-    food_terms_mappings,
     food_taste_mappings,
 )
+from notebooks.helpers.prep.ingredients_mapping import ingredients_mappings
 from notebooks.helpers.prep.synonmy_replacements import synonyms
 
 core_tastes = [
@@ -378,15 +378,17 @@ def generate_similiarity_dict(food_to_embeddings_dict, force=False):
     core_tastes_distances = dict()
     for taste in core_tastes:
         tastes_distances = dict()
-        for food, embedding in food_to_embeddings_dict.items():
-            similarity = 1 - spatial.distance.cosine(
-                avg_taste_embeddings[taste],
-                # average of all the embeddings of ingredient food
-                np.average(
-                    embedding, axis=0  # type: ignore
-                ),  # type: ignore
-            )  # type: ignore
-            tastes_distances[food] = similarity
+        for food in ingredients_mappings.values():
+            food = food.replace(' ', '_')
+            if food in food_to_embeddings_dict:
+                embedding = food_to_embeddings_dict.get(food)
+                embedding = np.average(embedding, axis=0)  # type: ignore
+                similarity = 1 - spatial.distance.cosine(
+                    avg_taste_embeddings[taste],
+                    # average of all the embeddings of ingredient food
+                    embedding,
+                )  # type: ignore
+                tastes_distances[food] = similarity
         core_tastes_distances[taste] = tastes_distances
 
     food_nonaroma_infos = dict()

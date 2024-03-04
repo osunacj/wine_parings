@@ -226,19 +226,37 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
         wine_nonaromas = contrasting_nonaromas[:2] + congruent_nonaromas[:2]
         wine_body = contrasting_body[:2] + congruent_body[:2]
         # impactful_descriptors = impactful_descriptors_contrasting[:2] + impactful_descriptors_congruent[:2]
-        pairing_types = ["Contrasting", "Contrasting", "Congruent", "Congruent"]
+        pairing_types = [
+            "Contrasting",
+            "Contrasting",
+            "Congruent",
+            "Congruent",
+            "Congruent",
+        ]
     elif len(contrasting_wines) >= 2:
         wine_names = contrasting_wines
         wine_nonaromas = contrasting_nonaromas
         wine_body = contrasting_body
         # impactful_descriptors = impactful_descriptors_contrasting
-        pairing_types = ["Contrasting", "Contrasting", "Contrasting", "Contrasting"]
+        pairing_types = [
+            "Contrasting",
+            "Contrasting",
+            "Contrasting",
+            "Contrasting",
+            "Contrasting",
+        ]
     else:
         wine_names = congruent_wines
         wine_nonaromas = congruent_nonaromas
         wine_body = congruent_body
         # impactful_descriptors = impactful_descriptors_congruent
-        pairing_types = ["Congruent", "Congruent", "Congruent", "Congruent"]
+        pairing_types = [
+            "Congruent",
+            "Congruent",
+            "Congruent",
+            "Congruent",
+            "Congruent",
+        ]
 
     return wine_names, wine_nonaromas, wine_body, pairing_types
 
@@ -257,6 +275,9 @@ def main():
         "relish",
     ]
     salmon = ["salmon", "dill", "cucumber", "sour_cream"]
+    salmon_2 = ["asparagus", "lemon", "spaghetti", "white_pepper", "lemmon_dressing"]
+
+    pork = ["parmesan", "romero", "chestnuts"]
 
     dinner = [
         "roasted_pepper",
@@ -268,7 +289,7 @@ def main():
         "basil",
         "walnuts",
     ]
-    dessert = ["sugar"]
+    dessert = ["dark_chocolate", "berries", "fondue"]
 
     ingredients = dessert
 
@@ -288,7 +309,7 @@ def main():
     #     most_impactful_descriptors
     # )
     wine_names, wine_nonaromas, wine_body, pairing_types = get_wine_pairings(
-        wine_recommendations, wine_df, top_n=4
+        wine_recommendations, wine_df, top_n=5
     )
     plot_wine_recommendations(
         pairing_wines=wine_names,
@@ -296,7 +317,7 @@ def main():
         pairing_body=wine_body,
         impactful_descriptors=None,
         pairing_types=pairing_types,
-        top_n=4,
+        top_n=5,
         food_attributes=food_attributes,
     )
     print(food_attributes)

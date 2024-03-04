@@ -182,11 +182,12 @@ def plot_wine_recommendations(
 
     grid = gridspec.GridSpec(3, top_n, height_ratios=[3, 0.5, 1])
 
+    length = min(top_n, len(pairing_wines))
     spider_nr = 0
-    number_line_nr = 4
-    descriptor_nr = 8
+    number_line_nr = spider_nr + length
+    descriptor_nr = number_line_nr + length
 
-    for wine in range(min(top_n, len(pairing_wines))):
+    for wine in range(length):
         make_spider(
             grid,
             spider_nr,

@@ -120,12 +120,13 @@ def normalize_instructions(instructions_list):
 
 def main():
     ready_ingredients = True
-    force = False
+    force = True
 
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
-    food_dataset = food_dataset.loc[60000:75000, :]
+    print(food_dataset.shape)
+    food_dataset = food_dataset.loc[:105000, :]
 
     clean_ingredients = extract_ingredients(
         food_dataset.ingredients.to_numpy(), force=force
@@ -145,7 +146,7 @@ def main():
             clean_ingredients=clean_ingredients,
             type="food",
         )
-        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=30)
+        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
 
         # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
         # normalized_description_token, _ = normalize_instructions(
@@ -162,8 +163,8 @@ def main():
         food_dataset.to_csv(
             "./app/data/test/reduced_food.csv",
             index_label=False,
-            mode="a",
-            header=False,
+            mode="w",
+            header=True,
         )
 
 

@@ -239,7 +239,7 @@ class RecipeNormalizer:
         )
         # find all sublists of tokens with descending length
         for n in range(
-            5, 1, -1
+            7, 1, -1
         ):  # stop at 2 because matching tokens with length 1 can stay as they are
             match = True
             while match:

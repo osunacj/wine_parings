@@ -1,268 +1,106 @@
-import pandas as pd
-import numpy as np
+# a file containing the 50 most frequently appearing descriptors for each wine
+descriptor_frequencies = pd.read_csv("wine_variety_descriptors.csv", index_col="index")
 
-core_tastes = [
-        "aroma",
-        "weight",
-        "sweet",
-        "acid",
-        "salt",
-        "piquant",
-        "fat",
-        "bitter",
-    ]
+# our word2vec model for all wine and food terms
+wine_word2vec_model = Word2Vec.load("food_word2vec_model.bin")
+word_vectors = wine_word2vec_model.wv
+
+# a file with the average wine nonaroma vectors for each nonaroma
+food_nonaroma_infos = pd.read_csv(
+    "average_nonaroma_vectors.csv", index_col="Unnamed: 0"
+)
 
 
-def extract_descriptors_from_review():
-    
+# this function scales each nonaroma between 0 and 1
+def minmax_scaler(val, minval, maxval):
+    val = max(min(val, maxval), minval)
+    normalized_val = (val - minval) / (maxval - minval)
+    return normalized_val
 
 
-
-
-
-def return_descriptor_from_mapping(descriptor_mapping, word, core_taste):
-    # if the common word is in the index (normalized word) of the dataframe of core taste c
-    if word in list(descriptor_mapping.index):
-        # return the descriptor in "combined that matches the taset and the common word"
-        descriptor_to_return = descriptor_mapping["combined"][word]
-        return descriptor_to_return
-    else:
-        # return None if the word is not in the dataframe
-        return None
-
-
-def main():
-
-    descriptor_mappings = dict()
-    for c in core_tastes:
-        if c == "aroma":
-            descriptor_mapping_filtered = descriptor_mapping.loc[
-                descriptor_mapping["type"] == "aroma"
-            ]
+# this function makes sure that a scaled value (between 0 and 1) is returned for a food nonaroma
+def check_in_range(label_range_dict, value):
+    for label, value_range_tuple in label_range_dict.items():
+        lower_end = value_range_tuple[0]
+        upper_end = value_range_tuple[1]
+        if value >= lower_end and value <= upper_end:
+            return label
         else:
-            descriptor_mapping_filtered = descriptor_mapping.loc[
-                descriptor_mapping["primary taste"] == c
-            ]
-        # dict containing dataframes of descriptors of certain taste
-        descriptor_mappings[c] = descriptor_mapping_filtered
-
-    review_descriptors = []
-    # iterate through every review
-    for review in wine_reviews:
-        taste_descriptors = []
-        # returns a list of lists being the sentences[words[]]
-        normalized_review = normalize_text(review)
-        # a list with the most common words matched by _
-        phrased_review = wine_trigram_model[normalized_review]
-        #     print(phrased_review)
-
-        for c in core_tastes:
-            descriptors_only = [
-                return_descriptor_from_mapping(descriptor_mappings[c], word, c)
-                # word is every word in the common words in phrases
-                for word in phrased_review
-            ]
-            # remove NONE, only keep the descriptors for the taste
-            no_nones = [str(d).strip() for d in descriptors_only if d is not None]
-            # build a string of the descriptors
-            descriptorized_review = " ".join(no_nones)
-            # list of strings that represent the descriptors for a taste
-            taste_descriptors.append(descriptorized_review)
-        # list of lists where each list is a review containing the list of descriptors by taste  [[desciptor aroma, descriptor weight, ...], [review 2] ...]
-        review_descriptors.append(taste_descriptors)
-
-
-def vectors():
-    taste_descriptors = []
-    taste_vectors = []
-
-    for n, taste in enumerate(core_tastes):
-        print(taste)
-        # lsit of strings of all descriptors for taste n
-        taste_words = [r[n] for r in review_descriptors]
-
-        vectorizer = TfidfVectorizer()
-        X = vectorizer.fit(taste_words)
-        dict_of_tfidf_weightings = dict(zip(X.get_feature_names(), X.idf_))
-
-        wine_review_descriptors = []
-        wine_review_vectors = []
-        # d is the string of descriptor words
-        for d in taste_words:
-            descriptor_count = 0
-            weighted_review_terms = []
-            terms = d.split(" ")
-            # descriptor of term in the string of descriptors d
-            for term in terms:
-                if term in dict_of_tfidf_weightings.keys():
-                    tfidf_weighting = dict_of_tfidf_weightings[term]
-                    try:
-                        word_vector = wine_word2vec_model.wv.get_vector(term).reshape(
-                            1, 300
-                        )
-                        # Vector of the word times the tfidf vector for the word
-                        weighted_word_vector = tfidf_weighting * word_vector
-                        weighted_review_terms.append(weighted_word_vector)
-                        descriptor_count += 1
-                    except:
-                        continue
-                else:
-                    continue
-            try:
-                # average of the vectors of each descriptor(term) of a given taste [oak, plum, ]
-                review_vector = sum(weighted_review_terms) / len(weighted_review_terms)
-                review_vector = review_vector[0]
-            except:
-                review_vector = np.nan
-            #         terms_and_vec = [terms, review_vector]
-            wine_review_vectors.append(review_vector)
-            wine_review_descriptors.append(terms)
-
-        taste_vectors.append(wine_review_vectors)
-        # [aroma[[vector of first review of aromas], [vector of second review of aromas], ...], biter[], ...]
-        taste_descriptors.append(wine_review_descriptors)
-
-    taste_vectors_t = list(map(list, zip(*taste_vectors)))
-    taste_descriptors_t = list(map(list, zip(*taste_descriptors)))
-
-    review_vecs_df = pd.DataFrame(taste_vectors_t, columns=core_tastes)
-
-    columns_taste_descriptors = [a + "_descriptors" for a in core_tastes]
-    review_descriptors_df = pd.DataFrame(
-        taste_descriptors_t, columns=columns_taste_descriptors
-    )
-
-    wine_df_vecs = pd.concat(
-        [wine_df_merged_filtered, review_descriptors_df, review_vecs_df], axis=1
-    )
-    wine_df_vecs.head(5)
-
-
-def average():
-    # pull the average embedding for the wine attribute across all wines. 
-    avg_taste_vecs = dict()
-    for t in core_tastes:
-        # look at the average embedding for a taste, across all wines that have descriptors for that taste 
-        review_arrays = wine_df_vecs[t].dropna()
-        average_taste_vec = np.average(review_arrays)
-        avg_taste_vecs[t] = average_taste_vec
-
-# lsit of tuple of (variety, geo_normalized)
-normalized_geos = list(set(zip(wine_df_vecs['Variety'], wine_df_vecs['geo_normalized'])))
-
-def subset_wine_vectors(list_of_varieties, wine_attribute):
-    wine_variety_vectors = []
-    for v in list_of_varieties:
-
-        one_var_only = wine_df_vecs.loc[(wine_df_vecs['Variety'] == v[0]) & 
-                                                (wine_df_vecs['geo_normalized'] == v[1])]
-        if len(list(one_var_only.index)) < 1 or str(v[1][-1]) == '0':
             continue
-        else:
-            taste_vecs = list(one_var_only[wine_attribute])
-            # if vector exits palce existent vector otherwise place average of taste (wine attribute)
-            taste_vecs = [avg_taste_vecs[wine_attribute] if 'numpy' not in str(type(x)) else x for x in taste_vecs]
-            # get the average for the variety and geo normalization
-            average_variety_vec = np.average(taste_vecs, axis=0)
-            
-            descriptor_colname = wine_attribute + '_descriptors'
-            # write the descriptors for each variety, geo, taste -> all descritors of aroma
-            all_descriptors = [i[0] for i in list(one_var_only[descriptor_colname])]
-            word_freqs = Counter(all_descriptors)
-            # Get most common word frequencies
-            most_common_words = word_freqs.most_common(50)
-            top_n_words = [(i[0], "{:.2f}".format(i[1]/len(taste_vecs))) for i in most_common_words]
-            top_n_words = [i for i in top_n_words if len(i[0])>2]
-            # str, vector with average, list of 50 most common words
-            wine_variety_vector = [v, average_variety_vec, top_n_words]
-                
-            wine_variety_vectors.append(wine_variety_vector)
-            
-    return wine_variety_vectors
 
 
-def pca_wine_variety(list_of_varieties, wine_attribute, pca=True):
-    wine_var_vectors = subset_wine_vectors(normalized_geos, wine_attribute)
-    
-    wine_varieties = [str(w[0]).replace('(', '').replace(')', '').replace("'", '').replace('"', '') for w in wine_var_vectors]
-    wine_var_vec = [w[1] for w in wine_var_vectors]
-    if pca:
-        pca = PCA(1)
-        wine_var_vec = pca.fit_transform(wine_var_vec)
-        wine_var_vec = pd.DataFrame(wine_var_vec, index=wine_varieties)
-    else:
-        wine_var_vec = pd.Series(wine_var_vec, index=wine_varieties)
-    wine_var_vec.sort_index(inplace=True)
-    
-    wine_descriptors = pd.DataFrame([w[2] for w in wine_var_vectors], index=wine_varieties)
-    wine_descriptors = pd.melt(wine_descriptors.reset_index(), id_vars='index')
-    wine_descriptors.sort_index(inplace=True)
-    
-    return wine_var_vec, wine_descriptors
-
-taste_dataframes = []
-# generate the dataframe of aromas vectors as output, 
-aroma_vec, aroma_descriptors = pca_wine_variety(normalized_geos, 'aroma', pca=False)
-taste_dataframes.append(aroma_vec)
-
-# generate the dataframes of nonaroma scalars
-for tw in core_tastes[1:]:
-    pca_w_dataframe, nonaroma_descriptors = pca_wine_variety(normalized_geos, tw, pca=True)
-    taste_dataframes.append(pca_w_dataframe)
-    
-# combine all the dataframes created above into one 
-all_nonaromas = pd.concat(taste_dataframes, axis=1)
-all_nonaromas.columns = core_tastes
+# this function calculates the average embedding of all foods supplied as input
+def calculate_avg_food_vec(sample_foods):
+    sample_food_vecs = []
+    for s in sample_foods:
+        sample_food_vec = word_vectors[s]
+        sample_food_vecs.append(sample_food_vec)
+    sample_food_vecs_avg = np.average(sample_food_vecs, axis=0)
+    return sample_food_vecs_avg
 
 
-def distances():
-    from scipy import spatial
+# this function returns two things: a score (between 0 and 1) and a normalized value (integer between 1 and 4) for a given nonaroma
+def nonaroma_values(nonaroma, average_food_embedding):
+    average_taste_vec = food_nonaroma_infos.at[nonaroma, "average_vec"]
+    average_taste_vec = re.sub("\s+", ",", average_taste_vec)
+    average_taste_vec = average_taste_vec.replace("[,", "[")
+    average_taste_vec = np.array(ast.literal_eval(average_taste_vec))
 
-    core_tastes_revised = {'weight': ['heavy', 'cassoulet', 'cassoulet', 'full_bodied', 'thick', 'milk', 'fat', 'mincemeat', 'steak', 'bold', 'pizza', 'pasta', 'creamy', 'bread'],
-                        'sweet': ['sweet', 'sugar', 'cake', 'mango', 'stevia'], 
-                        'acid': ['acid', 'sour', 'vinegar', 'yoghurt', 'cevich', 'cevich'],
-                        'salt': ['salty', 'salty', 'parmesan', 'oyster', 'pizza', 'bacon', 'cured_meat', 'sausage', 'potato_chip'], 
-                        'piquant': ['spicy'], 
-                        'fat': ['fat', 'fried', 'creamy', 'cassoulet', 'foie_gras', 'buttery', 'cake', 'foie_gras', 'sausage', 'brie', 'carbonara'], 
-                        'bitter': ['bitter', 'kale']
-                        }
+    similarity = 1 - spatial.distance.cosine(average_taste_vec, average_food_embedding)
+    # scale the similarity using our minmax scaler
+    scaled_similarity = minmax_scaler(
+        similarity,
+        food_nonaroma_infos.at[nonaroma, "farthest"],
+        food_nonaroma_infos.at[nonaroma, "closest"],
+    )
+    standardized_similarity = check_in_range(food_weights[nonaroma], scaled_similarity)
+    similarity_and_scalar = (scaled_similarity, standardized_similarity)
+    return similarity_and_scalar
 
-    average_taste_vecs = dict()
-    core_tastes_distances = dict()
-    for taste, keywords in core_tastes_revised.items():
-        
-        all_keyword_vecs = []
-        for keyword in keywords:
-            c_vec = word_vectors[keyword]
-            # Get the vector for each of the keywords
-            all_keyword_vecs.append(c_vec)
-        
-            # Get the average vector of keywords for each taste
-        avg_taste_vec = np.average(all_keyword_vecs, axis=0)
-        average_taste_vecs[taste] = avg_taste_vec
-            
-        # Get the cosine distance between the ingredient and the average core taste for each ingredient in the food data
-        taste_distances = dict()
-        for k, v in foods_vecs.items():
-            similarity = 1- spatial.distance.cosine(avg_taste_vec, v)
-            taste_distances[k] = similarity
-            
-        core_tastes_distances[taste] = taste_distances    
-    
-    food_nonaroma_infos = dict()
-    # for each core taste, identify the food item that is farthest and closest. We will need this to create a normalized scale between 0 and 1
-    for key, value in core_tastes_revised.items():
-        dict_taste = dict()
-        farthest = min(core_tastes_distances[key], key=core_tastes_distances[key].get)
-        farthest_distance = core_tastes_distances[key][farthest]
-        closest = max(core_tastes_distances[key], key=core_tastes_distances[key].get)
-        closest_distance = core_tastes_distances[key][closest]
-        print(key, farthest, closest)
-        dict_taste['farthest'] = farthest_distance
-        dict_taste['closest'] = closest_distance
-        dict_taste['average_vec'] = average_taste_vecs[key]
-        food_nonaroma_infos[key] = dict_taste
-        
 
-if __name__ == "__main__":
-    main()
+# this function loops through the various nonaromas, returning the nonaroma scores & normalized values, the body/weight of the food and the average food embedding
+def return_all_food_values(sample_foods):
+    food_nonaromas = dict()
+    average_food_embedding = calculate_avg_food_vec(sample_foods)
+    for nonaroma in ["sweet", "acid", "salt", "piquant", "fat", "bitter"]:
+        food_nonaromas[nonaroma] = nonaroma_values(nonaroma, average_food_embedding)
+    food_weight = nonaroma_values("weight", average_food_embedding)
+    return food_nonaromas, food_weight, average_food_embedding
+
+
+# these functions return the wine descriptors that most closely match the wine aromas of the selected recommendations. This will help give additional context and justification to the recommendations.
+
+
+def find_descriptor_distance(word, foodvec):
+    descriptor_wordvec = word_vectors[word]
+    similarity = 1 - spatial.distance.cosine(descriptor_wordvec, foodvec)
+    return similarity
+
+
+def most_impactful_descriptors(recommendation):
+    recommendation_frequencies = descriptor_frequencies.filter(
+        like=recommendation, axis=0
+    )
+    recommendation_frequencies["similarity"] = recommendation_frequencies[
+        "descriptors"
+    ].apply(lambda x: find_descriptor_distance(x, aroma_embedding))
+    recommendation_frequencies.sort_values(
+        ["similarity", "relative_frequency"], ascending=False, inplace=True
+    )
+    recommendation_frequencies = recommendation_frequencies.head(5)
+    most_impactful_descriptors = list(recommendation_frequencies["descriptors"])
+    return most_impactful_descriptors
+
+
+def retrieve_pairing_type_info(wine_recommendations, pairing_type):
+    pairings = wine_recommendations.loc[
+        wine_recommendations["pairing_type"] == pairing_type
+    ].head(4)
+    wine_names = list(pairings.index)
+    recommendation_nonaromas = wine_recommendations.loc[wine_names, :]
+    pairing_nonaromas = recommendation_nonaromas[
+        ["sweet", "acid", "salt", "piquant", "fat", "bitter"]
+    ].to_dict("records")
+    pairing_body = list(recommendation_nonaromas["weight"])
+    impactful_descriptors = list(pairings["most_impactful_descriptors"])
+    return wine_names, pairing_nonaromas, pairing_body, impactful_descriptors
