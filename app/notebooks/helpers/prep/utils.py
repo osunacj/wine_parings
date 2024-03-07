@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from sympy import Q
 from .ingredients_mapping import ingredients_mappings
 from .wine_descriptors_mapping import wine_descriptors_mapping
 from typing import Union, List, Dict
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-from math import pi
+
+import numpy as np
+from sklearn.decomposition import PCA
+import random
+from .synonmy_replacements import synonyms
 
 
 def get_all_ingredients(as_list=True) -> Union[Dict[str, str], List[str]]:
@@ -75,156 +76,57 @@ def read_and_write_ingredients(
     return new_ingredients
 
 
-def make_spider(grid, n, wine_attributes, title, color, pairing_type, food_attributes):
-    # number of variable
-    categories = list(food_attributes.keys())
-    N = len(categories)
+def _random_sample_with_min_count(population, k):
+    if len(population) <= k:
+        return population
+    else:
+        return random.sample(population, k)
 
-    # What will be the angle of each axis in the plot? (we divide the plot / number of variable)
-    angles = [n / float(N) * 2 * pi for n in range(N)]
-    angles += angles[:1]
 
-    # Initialise the spider plot
-    ax = plt.subplot(
-        grid[n],
-        polar=True,
+def _merge_synonmys(food_to_embeddings_dict) -> dict:
+    synonmy_replacements_path = Path(
+        "./app/notebooks/helpers/prep/synonmy_replacements.py"
     )
+    if synonmy_replacements_path.exists() and synonyms:
+        synonmy_replacements = synonyms
+    else:
+        synonmy_replacements = {}
 
-    # If you want the first axis to be on top:
-    ax.set_theta_offset(pi / 2)
-    ax.set_theta_direction(-1)
+    # Map synonyms mapping
+    for key in food_to_embeddings_dict.keys():
+        if key in synonmy_replacements:
+            key_to_use = synonmy_replacements[key]
+            food_to_embeddings_dict[key] = food_to_embeddings_dict[key_to_use]
 
-    # Draw one axe per variable + add labels labels yet
-    plt.xticks(angles[:-1], categories, color="grey", size=11)
-
-    # Draw ylabels
-    ax.set_rlabel_position(0)
-    plt.yticks(
-        [0.25, 0.5, 0.75, 1.0], ["0.25", "0.50", "0.75", "1.00"], color="grey", size=0
-    )
-    plt.ylim(0, 1)
-
-    # Ind1
-    values = list(wine_attributes.values())
-    values += values[:1]
-    ax.plot(angles, values, color=color, linewidth=2, linestyle="solid")
-    ax.fill(angles, values, color=color, alpha=0.4)
-
-    # Add a title
-    # Insert a line break in the title if needed
-    title_split = str(title).split(",")
-    new_title = []
-    for number, word in enumerate(title_split):
-        if (number % 2) == 0 and number > 0:
-            updated_word = "\n" + word.strip()
-            new_title.append(updated_word)
-        else:
-            updated_word = word.strip()
-            new_title.append(updated_word)
-    new_title = ", ".join(new_title)
-
-    title_incl_pairing_type = new_title + "\n" + "(" + str(pairing_type) + ")"
-
-    plt.title(title_incl_pairing_type, size=13, color="black", y=1.2)
+    return food_to_embeddings_dict
 
 
-def plot_number_line(gs, n, value, dot_color):
-    ax = plt.subplot(gs[n])
-    ax.set_xlim(-1, 2)
-    ax.set_ylim(0, 3)
-
-    # draw lines
-    xmin = 0
-    xmax = 1
-    y = 1
-    height = 0.2
-
-    plt.hlines(y, xmin, xmax)
-    plt.vlines(xmin, y - height / 2.0, y + height / 2.0)
-    plt.vlines(xmax, y - height / 2.0, y + height / 2.0)
-
-    # draw a point on the line
-    px = value
-    plt.plot(px, y, "ko", ms=10, mfc=dot_color)
-
-    # add numbers
-    plt.text(
-        xmin - 0.1,
-        y,
-        "Light-Bodied",
-        horizontalalignment="right",
-        fontsize=11,
-        color="grey",
-    )
-    plt.text(
-        xmax + 0.1,
-        y,
-        "Full-Bodied",
-        horizontalalignment="left",
-        fontsize=11,
-        color="grey",
-    )
-
-    plt.axis("off")
-
-
-def plot_wine_recommendations(
-    pairing_wines,
-    wine_attributes,
-    pairing_body,
-    impactful_descriptors,
-    pairing_types,
-    top_n,
-    food_attributes,
-):
-
-    plt.figure(figsize=(20, 7), dpi=96)
-
-    grid = gridspec.GridSpec(3, top_n, height_ratios=[3, 0.5, 1])
-
-    length = min(top_n, len(pairing_wines))
-    spider_nr = 0
-    number_line_nr = spider_nr + length
-    descriptor_nr = number_line_nr + length
-
-    for wine in range(length):
-        make_spider(
-            grid,
-            spider_nr,
-            wine_attributes[wine],
-            pairing_wines[wine],
-            "red",
-            pairing_types[wine],
-            food_attributes,
+def generate_average_PCA_from_embeddings(wine_varieties, variety_embeddings: dict, N=1):
+    # wine_varieties are needed to construct the order of varieties to map the PCA
+    # index will be a list of varieties
+    # embeddings will be a list of vector, one for each wine
+    if N > 0:
+        embeddings_to_reduce = np.stack(
+            np.concatenate([embeddings for embeddings in variety_embeddings.values()])
         )
-        plot_number_line(grid, number_line_nr, pairing_body[wine], dot_color="red")
-        # create_text(gs, descriptor_nr, impactful_descriptors[wine])
-        spider_nr += 1
-        number_line_nr += 1
-        descriptor_nr += 1
-    plt.show()
 
+        pca = PCA(N)
+        reduced_embeddings = pca.fit_transform(embeddings_to_reduce)
 
-def plot_food_profile(food_attributes, ingredients):
+        count = 0
+        for variety, embeddings in variety_embeddings.items():
+            size = len(embeddings)
+            variety_embeddings[variety] = np.average(
+                reduced_embeddings[count : count + size], axis=0
+            )
+            count += size
+    else:
+        for variety, embeddings in variety_embeddings.items():
+            variety_embeddings[variety] = np.average(embeddings, axis=0)
 
-    plt.figure(figsize=(4, 5), dpi=75)
+    ordered_pca_variety = [variety_embeddings[variety] for variety in wine_varieties]
 
-    food_attrtibutes_value = {
-        taste: value[0] for taste, value in food_attributes.items()
-    }
-    food_attrtibutes_value.pop("weight")
-    grid = gridspec.GridSpec(2, 1, height_ratios=[3, 0.5])
-    make_spider(
-        grid,
-        0,
-        food_attrtibutes_value,
-        "Food Profile",
-        "green",
-        ingredients,
-        food_attrtibutes_value,
-    )
-    plot_number_line(grid, 1, food_attributes.get("weight")[0], dot_color="green")
-    plt.show()
+    return ordered_pca_variety
 
 
 if __name__ == "__main__":

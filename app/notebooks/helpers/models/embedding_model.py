@@ -51,6 +51,8 @@ class PredictionModel:
         embeddings_flat = embeddings.view((-1, 768))
         ingredient_ids_flat = torch.stack(ingredient_ids).flatten()
         food_id = self.tokenizer.convert_tokens_to_ids(ingredient_name)
+        if food_id == 100:
+            return [None]
         food_embedding = embeddings_flat[ingredient_ids_flat == food_id].cpu().numpy()
-
-        return food_embedding[0]
+        if len(food_embedding) > 0:
+            return food_embedding[0]

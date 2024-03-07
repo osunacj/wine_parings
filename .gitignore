@@ -4,3 +4,7 @@ checkpoint-final/
 temp/
 app/notebooks/helpers/models/food_similarity_dict.pkl
 app/notebooks/helpers/models/food_embeddings_dict_foodbert.pkl
+app/notebooks/helpers/models/wine_average_embeddings.pkl
+app/notebooks/helpers/models/food_taste_dict.pkl
+
+lib/

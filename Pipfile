@@ -23,6 +23,8 @@ selenium = "*"
 webdriver-manager = "*"
 spacy = "*"
 gensim = "*"
+networkx = "*"
+pyvis = "*"
 
 [dev-packages]
 pycodestyle = "*"
