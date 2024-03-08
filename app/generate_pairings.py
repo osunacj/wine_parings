@@ -16,6 +16,7 @@ from notebooks.helpers.prep.pairing_rules import (
 from notebooks.helpers.prep.view_embeddings import (
     plot_wine_recommendations,
     plot_food_profile,
+    view_embeddings_of_ingredient,
     view_dish_embeddings,
 )
 
@@ -41,10 +42,23 @@ def get_production_wines():
 
 def get_descriptor_frequencies():
     descriptor_frequencies = pd.read_csv(
-        "./app/notebooks/helpers/temp/wine_variety_descriptors.csv", index_col="index"
+        "./app/notebooks/helpers/temp/wine_variety_descriptors.csv",
+        index_col="Unnamed: 0",
     )
-    # This file is still incorrect and it needs to be fixed
-    return descriptor_frequencies
+
+    index = descriptor_frequencies.index
+    columns = descriptor_frequencies.columns
+    descriptors = []
+
+    for _, variety in descriptor_frequencies.iterrows():
+        desc = []
+        for column in columns[:5]:
+            descriptor = variety[column]
+            descriptor = eval(descriptor)
+            desc.append(descriptor[0])
+        descriptors.append(desc)
+
+    return pd.DataFrame({"descriptors": descriptors}, index=index)
 
 
 def get_food_embedding_dict():
@@ -76,19 +90,21 @@ def get_food_taste_distances_info():
 def normalize_production_wines():
     wines_df = get_production_wines()
     wine_weights = {
-        "weight": {1: (0, 0.25), 2: (0.25, 0.45), 3: (0.45, 0.75), 4: (0.75, 1)},
-        "sweet": {1: (0, 0.25), 2: (0.25, 0.6), 3: (0.6, 0.75), 4: (0.75, 1)},
-        "acid": {1: (0, 0.05), 2: (0.05, 0.25), 3: (0.25, 0.5), 4: (0.5, 1)},
-        "salt": {1: (0, 0.15), 2: (0.15, 0.25), 3: (0.25, 0.7), 4: (0.7, 1)},
-        "piquant": {1: (0, 0.15), 2: (0.15, 0.3), 3: (0.3, 0.6), 4: (0.6, 1)},
-        "fat": {1: (0, 0.25), 2: (0.25, 0.5), 3: (0.5, 0.7), 4: (0.7, 1)},
-        "bitter": {1: (0, 0.2), 2: (0.2, 0.37), 3: (0.37, 0.6), 4: (0.6, 1)},
+        "weight": {1: (0, 0.25), 2: (0.25, 0.50), 3: (0.50, 0.75), 4: (0.75, 1)},
+        "sweet": {1: (0, 0.10), 2: (0.15, 0.25), 3: (0.25, 0.35), 4: (0.35, 1)},
+        "acid": {1: (0, 0.2), 2: (0.2, 0.35), 3: (0.35, 0.45), 4: (0.45, 1)},
+        "salt": {1: (0, 0.55), 2: (0.55, 0.6), 3: (0.6, 0.7), 4: (0.7, 1)},
+        "piquant": {1: (0, 0.2), 2: (0.2, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
+        "fat": {1: (0, 0.25), 2: (0.25, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
+        "bitter": {1: (0, 0.12), 2: (0.12, 0.3), 3: (0.3, 0.5), 4: (0.5, 1)},
     }
+    desc_df = get_descriptor_frequencies()
+    wines = pd.merge(desc_df, wines_df, right_index=True, left_index=True)
 
     for taste, subdict in wine_weights.items():
-        wines_df[taste] = wines_df[taste].apply(lambda x: check_in_range(subdict, x))
-    wines_df.sort_index(inplace=True)
-    return wines_df
+        wines[taste] = wines[taste].apply(lambda x: check_in_range(subdict, x))
+    wines.sort_index(inplace=True)
+    return wines
 
 
 # this function scales each nonaroma between 0 and 1
@@ -123,7 +139,7 @@ def calculate_avg_food_vec(
                 food_average_distances[core_taste]["closest"]
                 - food_average_distances[core_taste]["farthest"]
             )
-            / 2
+            / 3
         )
         taste_avg = food_average_distances[core_taste]["average_vec"]
 
@@ -179,6 +195,7 @@ def calculate_food_attributes(food_tastes_distances, food_average_distances):
 
 def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: dict):
     clean_dish_ingredeints = {}
+    ingredient_similarity = []
     for dish_ingredient, ingredient_embedding in dish_embeddings.items():
         if dish_ingredient not in food_to_embeddings_dict:
             continue
@@ -191,16 +208,19 @@ def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: di
             )
 
         similarities = []
+
         for embedding in food_to_embeddings_dict[dish_ingredient]:
             similarities.append(
                 1 - spatial.distance.cosine(embedding, ingredient_embedding)
             )
 
+        arg_max = np.argmax(similarities)
+        ingredient_similarity.append(similarities[arg_max])
         clean_dish_ingredeints[dish_ingredient] = food_to_embeddings_dict[
             dish_ingredient
-        ][np.argmax(similarities)]
+        ][arg_max]
 
-    return clean_dish_ingredeints
+    return clean_dish_ingredeints, ingredient_similarity
 
 
 # def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: dict):
@@ -235,7 +255,7 @@ def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: di
 #     return clean_dish_ingredeints
 
 
-def get_food_attributes(food_ingredients):
+def compute_embedding_food_ingredients(food_ingredients) -> dict:
     dish_embeddings = {}
     prediction_model = PredictionModel()
     for ingredient in food_ingredients:
@@ -244,13 +264,17 @@ def get_food_attributes(food_ingredients):
         )
         dish_embeddings[ingredient] = embedding
 
+    return dish_embeddings
+
+
+def get_food_attributes(food_ingredients):
+
+    dish_embeddings = compute_embedding_food_ingredients(food_ingredients)
     food_to_embeddings_dict = get_food_embedding_dict()
     food_average_distances = get_food_taste_distances_info()
-
-    dish_embeddings = get_the_closest_embedding(
+    dish_embeddings, dish_similarities = get_the_closest_embedding(
         food_to_embeddings_dict, dish_embeddings
     )
-
     food_tastes_distances = calculate_avg_food_vec(
         food_average_distances=food_average_distances,
         dish_ingredients=dish_embeddings,
@@ -352,12 +376,13 @@ def main():
 
     pasta = [
         "spaghetti",
-        "clams",
+        "clam",
         "olive_oil",
         "garlic",
         "butter",
-        "chili_flakes",
     ]
+
+    pasta_2 = ["pasta", "parmesan", "butter", "black_pepper", "salt"]
 
     dinner = [
         "roasted_pepper",
@@ -369,14 +394,20 @@ def main():
         "basil",
         "walnuts",
     ]
-    dessert = ["dark_chocolate", "berries", "fondue"]
+    dessert = ["dark_chocolate", "berry", "fondue"]
 
-    tester = ["pizza_dough", "mozzarella", "pepperoni"]
+    tester = [
+        "pizza_dough",
+        "mozzarella",
+        "pepperoni",
+        "pizza_sauce",
+    ]
 
-    ingredients = pasta
+    ingredients = tester
 
     food_attributes, food_tastes_distances = get_food_attributes(ingredients)
-    plot_food_profile(food_attributes=food_attributes, ingredients=ingredients)
+    test_food_atributes = food_attributes
+    # plot_food_profile(food_attributes=food_attributes, ingredients=ingredients)
     print(food_attributes)
     # view_dish_embeddings(
     #     dish_embedding=food_tastes_distances["aroma"],
@@ -385,24 +416,23 @@ def main():
 
     wine_df = get_production_wines()
     wine_recommendations = normalize_production_wines()
-    wine_recommendations = nonaroma_rules(wine_recommendations, food_attributes)
+    wine_recommendations = nonaroma_rules(wine_recommendations, test_food_atributes)
     wine_recommendations = congruent_or_contrasting(
-        wine_recommendations, food_attributes
+        wine_recommendations, test_food_atributes
     )
     wine_recommendations = sort_by_aroma_similarity(
         wine_recommendations, food_tastes_distances.get("aroma")
     )
-    # wine_recommendations["most_impactful_descriptors"] = wine_recommendations.index.map(
-    #     most_impactful_descriptors
-    # )
+    descriptors = wine_recommendations["descriptors"].to_numpy()
     wine_names, wine_nonaromas, wine_body, pairing_types = get_wine_pairings(
         wine_recommendations, wine_df, top_n=4
     )
     plot_wine_recommendations(
+        ingredients=ingredients,
         pairing_wines=wine_names,
         wine_attributes=wine_nonaromas,
         pairing_body=wine_body,
-        impactful_descriptors=None,
+        impactful_descriptors=descriptors,
         pairing_types=pairing_types,
         top_n=4,
         food_attributes=food_attributes,

@@ -162,14 +162,17 @@ def nonaroma_rules(wine_df, food_attributes):
     for rule in list_of_rules:
         # only apply the rule if it retains a sufficient number of wines in the selection.
         df_test = rule(df, food_attributes)
-        if df_test.shape[0] > 5:
+        if df_test.shape[0] > 3:
             df = rule(df, food_attributes)
     #         print(df.shape)
     return df
 
 
 def congruent_or_contrasting(df, food_attributes):
-    food_attributes.pop("weight")
+    food_attributes = {
+        taste: value for taste, value in food_attributes.items() if taste != "weight"
+    }
+
     # first, look for a congruent match
     max_nonaroma_val = max([i[1] for i in list(food_attributes.values())])
     most_defining_tastes = [

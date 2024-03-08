@@ -134,6 +134,7 @@ def plot_number_line(gs, n, value, dot_color):
 
 
 def plot_wine_recommendations(
+    ingredients,
     pairing_wines,
     wine_attributes,
     pairing_body,
@@ -145,12 +146,18 @@ def plot_wine_recommendations(
 
     plt.figure(figsize=(20, 7), dpi=96)
 
-    grid = gridspec.GridSpec(3, top_n, height_ratios=[3, 0.5, 1])
+    grid = gridspec.GridSpec(3, top_n + 1, height_ratios=[3, 0.5, 1])
+
+    food_attrtibutes_value = {
+        taste: value[0] for taste, value in food_attributes.items()
+    }
 
     length = min(top_n, len(pairing_wines))
-    spider_nr = 0
-    number_line_nr = spider_nr + length
-    descriptor_nr = number_line_nr + length
+    spider_nr = 1
+    number_line_nr = spider_nr + length + 1
+    descriptor_nr = number_line_nr + length + 1
+
+    plot_food_profile(grid, food_attrtibutes_value, ingredients, n=1 + length)
 
     for wine in range(length):
         make_spider(
@@ -160,36 +167,46 @@ def plot_wine_recommendations(
             pairing_wines[wine],
             "red",
             pairing_types[wine],
-            food_attributes,
+            food_attrtibutes_value,
         )
         plot_number_line(grid, number_line_nr, pairing_body[wine], dot_color="red")
-        # create_text(gs, descriptor_nr, impactful_descriptors[wine])
+        create_text(grid, descriptor_nr, impactful_descriptors[wine])
         spider_nr += 1
         number_line_nr += 1
         descriptor_nr += 1
     plt.show()
 
 
-def plot_food_profile(food_attributes, ingredients):
+def create_text(
+    grid, n, impactful_descriptors, text_init="Complementary wine notes: \n\n"
+):
+    ax = plt.subplot(grid[n])
 
-    plt.figure(figsize=(4, 5), dpi=75)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.invert_yaxis()
 
-    food_attrtibutes_value = {
-        taste: value[0] for taste, value in food_attributes.items()
-    }
-    food_attrtibutes_value.pop("weight")
-    grid = gridspec.GridSpec(2, 1, height_ratios=[3, 0.5])
+    text = text_init
+    text += "\n".join(descriptor for descriptor in impactful_descriptors)
+
+    ax.text(x=0, y=1, s=text, fontsize=12, color="grey")
+
+
+def plot_food_profile(grid, food_attributes, ingredients, n):
+    weight = food_attributes.pop("weight")
     make_spider(
         grid,
         0,
-        food_attrtibutes_value,
+        food_attributes,
         "Food Profile",
         "green",
-        ingredients,
-        food_attrtibutes_value,
+        [],
+        food_attributes,
     )
-    plot_number_line(grid, 1, food_attributes.get("weight")[0], dot_color="green")
-    plt.show()
+    plot_number_line(grid, n, weight, dot_color="green")
+    create_text(grid, 2 * n, ingredients, text_init="Food ingredients:\n\n")
 
 
 def plot_pca_vectors_3d(pca_matrix_dict):
@@ -286,13 +303,19 @@ def reduce_ingredients_dimension(
     return ingredient_target
 
 
-def view_embeddings_of_ingredient(ingredients, N):
+def view_embeddings_of_ingredient(ingredients: list, targets=None, N=2):
     ## Plots the different embeddings of the same ingredient/s
     get_food_to_embedding_dict = get_food_embedding_dict()
     ingredients_embeddings = {}
 
     for ingredient in ingredients:
         ingredients_embeddings[ingredient] = get_food_to_embedding_dict.get(ingredient)
+
+    if type(targets) == dict:
+        for target_ingredient, target_embedding in targets.items():
+            ingredients_embeddings[f"target_{target_ingredient}"] = np.expand_dims(
+                target_embedding, axis=0
+            )
 
     embeddings_to_reduce = np.stack(
         np.concatenate([embeddings for embeddings in ingredients_embeddings.values()])
@@ -315,7 +338,13 @@ def view_embeddings_of_ingredient(ingredients, N):
             x.append(pca_component[0])
             y.append(pca_component[1])
 
-        ax.scatter(x, y, s=20, label=ingredient)
+        ax.scatter(
+            x,
+            y,
+            s=20,
+            label=ingredient,
+            marker="o" if "target" not in ingredient else "x",
+        )
 
     plt.legend()
     ax.set_xlabel("1st Component")
