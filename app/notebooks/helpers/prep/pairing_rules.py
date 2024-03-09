@@ -146,7 +146,7 @@ def congruent_pairing(pairing_type, max_food_nonaroma_val, wine_nonaroma_val):
     elif wine_nonaroma_val >= max_food_nonaroma_val:
         return "congruent"
     else:
-        return ""
+        return "contrasting"
 
 
 def nonaroma_rules(wine_df, food_attributes):
@@ -210,10 +210,16 @@ def sort_by_aroma_similarity(df, food_aroma):
         return average_taste_vec
 
     df["aroma"] = df["aroma"].apply(nparray_str_to_list)
+    df["flavor"] = df["flavor"].apply(nparray_str_to_list)
     df["aroma_distance"] = df["aroma"].apply(
-        lambda x: spatial.distance.cosine(x, food_aroma)
+        lambda x: spatial.distance.cosine(x, food_aroma["aroma"])
     )
-    df.sort_values(by=["aroma_distance"], ascending=True, inplace=True)
+    df["flavor_distance"] = df["flavor"].apply(
+        lambda x: spatial.distance.cosine(x, food_aroma["flavor"])
+    )
+    df.sort_values(
+        by=["aroma_distance", "flavor_distance"], ascending=True, inplace=True
+    )
     return df
 
 
@@ -227,5 +233,5 @@ def retrieve_pairing_type_info(wine_recommendations, pairing_type, top_n, wine_d
         ["sweet", "acid", "salt", "piquant", "fat", "bitter"]
     ].to_dict("records")
     pairing_body = list(recommendation_nonaromas["weight"])
-    # impactful_descriptors = list(pairings["most_impactful_descriptors"])
-    return wine_names, pairing_nonaromas, pairing_body
+    descriptors = pairings["descriptors"].tolist()
+    return wine_names, pairing_nonaromas, pairing_body, descriptors

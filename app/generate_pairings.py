@@ -15,7 +15,6 @@ from notebooks.helpers.prep.pairing_rules import (
 
 from notebooks.helpers.prep.view_embeddings import (
     plot_wine_recommendations,
-    plot_food_profile,
     view_embeddings_of_ingredient,
     view_dish_embeddings,
 )
@@ -91,8 +90,8 @@ def normalize_production_wines():
     wines_df = get_production_wines()
     wine_weights = {
         "weight": {1: (0, 0.25), 2: (0.25, 0.50), 3: (0.50, 0.75), 4: (0.75, 1)},
-        "sweet": {1: (0, 0.10), 2: (0.15, 0.25), 3: (0.25, 0.35), 4: (0.35, 1)},
-        "acid": {1: (0, 0.2), 2: (0.2, 0.35), 3: (0.35, 0.45), 4: (0.45, 1)},
+        "sweet": {1: (0, 0.15), 2: (0.15, 0.2), 3: (0.2, 0.4), 4: (0.4, 1)},
+        "acid": {1: (0, 0.2), 2: (0.2, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
         "salt": {1: (0, 0.55), 2: (0.55, 0.6), 3: (0.6, 0.7), 4: (0.7, 1)},
         "piquant": {1: (0, 0.2), 2: (0.2, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
         "fat": {1: (0, 0.25), 2: (0.25, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
@@ -223,38 +222,6 @@ def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: di
     return clean_dish_ingredeints, ingredient_similarity
 
 
-# def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: dict):
-#     clean_dish_ingredeints = {}
-#     for dish_ingredient, ingredient_embedding in dish_embeddings.items():
-#         # if dish_ingredient not in food_to_embeddings_dict:
-#         #     continue
-
-#         if ingredient_embedding[0] == None:
-#             attempt = dish_ingredient.split("_")
-#             dish_ingredient = attempt[0]
-#             ingredient_embedding = np.average(
-#                 food_to_embeddings_dict[dish_ingredient], axis=0
-#             )
-
-#         ingredients = []
-#         similarities = []
-#         emb = []
-#         for ingredient, embedding in food_to_embeddings_dict.items():
-#             for embed in embedding:
-#                 similarities.append(
-#                     1 - spatial.distance.cosine(embed, ingredient_embedding)
-#                 )
-#                 emb.append(embed)
-#                 ingredients.append(ingredient)
-
-#         arg_max = np.argmax(similarities)
-#         ing = ingredients[arg_max]
-#         clean_dish_ingredeints[dish_ingredient] = emb[arg_max]
-#         print(arg_max, ing, dish_ingredient)
-
-#     return clean_dish_ingredeints
-
-
 def compute_embedding_food_ingredients(food_ingredients) -> dict:
     dish_embeddings = {}
     prediction_model = PredictionModel()
@@ -293,7 +260,7 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
             contrasting_wines,
             contrasting_nonaromas,
             contrasting_body,
-            # impactful_descriptors_contrasting,
+            contrasting_descriptors,
         ) = retrieve_pairing_type_info(
             wine_recommendations, "contrasting", top_n, wine_df
         )
@@ -305,7 +272,7 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
             congruent_wines,
             congruent_nonaromas,
             congruent_body,
-            # impactful_descriptors_congruent,
+            congruent_descriptors,
         ) = retrieve_pairing_type_info(
             wine_recommendations, "congruent", top_n, wine_df
         )
@@ -315,8 +282,8 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
     if len(contrasting_wines) >= 2 and len(congruent_wines) >= 2:
         wine_names = contrasting_wines[:2] + congruent_wines[:3]
         wine_nonaromas = contrasting_nonaromas[:2] + congruent_nonaromas[:3]
+        descriptors = congruent_descriptors
         wine_body = contrasting_body[:2] + congruent_body[:3]
-        # impactful_descriptors = impactful_descriptors_contrasting[:2] + impactful_descriptors_congruent[:2]
         pairing_types = [
             "Contrasting",
             "Contrasting",
@@ -328,7 +295,7 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
         wine_names = contrasting_wines
         wine_nonaromas = contrasting_nonaromas
         wine_body = contrasting_body
-        # impactful_descriptors = impactful_descriptors_contrasting
+        descriptors = contrasting_descriptors
         pairing_types = [
             "Contrasting",
             "Contrasting",
@@ -340,16 +307,9 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
         wine_names = congruent_wines
         wine_nonaromas = congruent_nonaromas
         wine_body = congruent_body
-        # impactful_descriptors = impactful_descriptors_congruent
-        pairing_types = [
-            "Congruent",
-            "Congruent",
-            "Congruent",
-            "Congruent",
-            "Congruent",
-        ]
+        descriptors = congruent_descriptors
 
-    return wine_names, wine_nonaromas, wine_body, pairing_types
+    return wine_names, wine_nonaromas, wine_body, pairing_types, descriptors
 
 
 def main():
@@ -394,7 +354,7 @@ def main():
         "basil",
         "walnuts",
     ]
-    dessert = ["dark_chocolate", "berry", "fondue"]
+    dessert = ["goat_cheese", "ham", "hummus", "bread", "tomato", "olive_oil"]
 
     tester = [
         "pizza_dough",
@@ -403,16 +363,11 @@ def main():
         "pizza_sauce",
     ]
 
-    ingredients = tester
+    ingredients = dinner
 
     food_attributes, food_tastes_distances = get_food_attributes(ingredients)
     test_food_atributes = food_attributes
-    # plot_food_profile(food_attributes=food_attributes, ingredients=ingredients)
     print(food_attributes)
-    # view_dish_embeddings(
-    #     dish_embedding=food_tastes_distances["aroma"],
-    #     include_avg=["sweet", "salt", "bitter", "piquant", "fat", "acid"],
-    # )
 
     wine_df = get_production_wines()
     wine_recommendations = normalize_production_wines()
@@ -421,11 +376,14 @@ def main():
         wine_recommendations, test_food_atributes
     )
     wine_recommendations = sort_by_aroma_similarity(
-        wine_recommendations, food_tastes_distances.get("aroma")
+        wine_recommendations, food_tastes_distances
     )
-    descriptors = wine_recommendations["descriptors"].to_numpy()
-    wine_names, wine_nonaromas, wine_body, pairing_types = get_wine_pairings(
-        wine_recommendations, wine_df, top_n=4
+    wine_names, wine_nonaromas, wine_body, pairing_types, descriptors = (
+        get_wine_pairings(
+            wine_recommendations,
+            wine_df,
+            top_n=4,
+        )
     )
     plot_wine_recommendations(
         ingredients=ingredients,

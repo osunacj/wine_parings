@@ -169,6 +169,36 @@ def get_taste_of_ingredient(ingredient):
     return taste
 
 
+def get_top_words_in_variety(wines_in_variety, taste, n=50):
+    # write the descriptors for each variety, geo, taste -> all descritors of aroma
+    all_descriptors = []
+    for descriptors in list(wines_in_variety[taste + "_descriptors"]):
+        if descriptors is np.nan:
+            continue
+
+        for descriptor in descriptors:
+            if len(descriptor) > 1:
+                all_descriptors.append(descriptor)
+
+    descriptor_frequencies = Counter(all_descriptors)
+    # Get most common word frequencies
+    most_common_words = descriptor_frequencies.most_common(n)
+    top_n_words = [
+        (i[0], "{:.1f}".format(i[1])) for i in most_common_words if len(i[0]) > 2
+    ]
+    return top_n_words
+
+
+def normalize(df, cols_to_normalize):
+    for feature_name in cols_to_normalize:
+        max_value = df[feature_name].max()
+        min_value = df[feature_name].min()
+        df[feature_name] = df[feature_name].apply(
+            lambda x: (x - min_value) / (max_value - min_value)
+        )
+    return df
+
+
 def average_taste_embeddings(dataframe, force):
     wine_average_embeddings_path = Path(
         "./app/notebooks/helpers/models/wine_average_embeddings.pkl"
@@ -193,7 +223,7 @@ def average_taste_embeddings(dataframe, force):
 
 
 def construct_taste_ingredient_embeddings(
-    food_to_embeddings_dict, descriptors_in_reviews, force=False
+    food_to_embeddings_dict, descriptors_in_reviews
 ):
     constructor = {}
     for core_taste in core_tastes:
@@ -228,44 +258,20 @@ def construct_taste_ingredient_embeddings(
             )
             constructor[core_taste + "_descriptors"].append(ingredients)
     embeddings_dataset = pd.DataFrame(constructor, columns=list(constructor.keys()))
-
-    _ = average_taste_embeddings(embeddings_dataset, force=force)
-
     return embeddings_dataset
 
 
-def get_top_words_in_variety(wines_in_variety, taste, n=50):
-    # write the descriptors for each variety, geo, taste -> all descritors of aroma
-    all_descriptors = []
-    for descriptors in list(wines_in_variety[taste + "_descriptors"]):
-        if descriptors is np.nan:
-            continue
-
-        for descriptor in descriptors:
-            if len(descriptor) > 1:
-                all_descriptors.append(descriptor)
-
-    descriptor_frequencies = Counter(all_descriptors)
-    # Get most common word frequencies
-    most_common_words = descriptor_frequencies.most_common(n)
-    top_n_words = [
-        (i[0], "{:.1f}".format(i[1])) for i in most_common_words if len(i[0]) > 2
-    ]
-    return top_n_words
-
-
-def normalize(df, cols_to_normalize):
-    for feature_name in cols_to_normalize:
-        max_value = df[feature_name].max()
-        min_value = df[feature_name].min()
-        df[feature_name] = df[feature_name].apply(
-            lambda x: (x - min_value) / (max_value - min_value)
-        )
-    return df
-
-
-def wine_varieties(dataframe: pd.DataFrame):
+def wine_varieties(food_to_embeddings_dict, force=False):
+    wine_dataset = get_wine_dataframe()
+    descriptors_in_reviews = wine_dataset["descriptors_in_reviews"].to_numpy()
+    wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
+        food_to_embeddings_dict, descriptors_in_reviews
+    )
+    dataframe = pd.concat(
+        [wine_dataset, wine_embeddings_dataframe], axis=1
+    ).reset_index()
     avg_taste_embeddings = average_taste_embeddings(dataframe, force=False)
+
     wine_varieties = list(set(zip(dataframe["Variety"], dataframe["geo_normalized"])))
     wine_varieties = list(
         filter(lambda x: type(x[0]) == str and type(x[1]) == str, wine_varieties)
@@ -298,15 +304,14 @@ def wine_varieties(dataframe: pd.DataFrame):
                 for embedding in wines_in_variety[taste + "_embeddings"].to_numpy()
             ]
 
-            # average_variety_vec = np.average(taste_embeddings, axis=0)
-
-            top_n_words = get_top_words_in_variety(wines_in_variety, taste, n=15)
+            if taste == "aroma":
+                top_n_words = get_top_words_in_variety(wines_in_variety, taste, n=15)
+                wine_variety_top_words.append(top_n_words)
 
             wine_variety_vectors[variety] = taste_embeddings
             # average vector of the wine for a given taste and variety
-            wine_variety_top_words.append(top_n_words)
 
-        if taste not in ["aroma"]:
+        if taste not in ["aroma", "flavor"]:
             ordered_pca_variety = generate_average_PCA_from_embeddings(
                 wine_varieties, wine_variety_vectors, N=1
             )
@@ -322,10 +327,10 @@ def wine_varieties(dataframe: pd.DataFrame):
             wine_variety_vectors = pd.Series(
                 ordered_pca_variety, index=wine_varieties_index, name=f"{taste}"
             )
-
-            wine_variety_descriptions = pd.DataFrame(
-                wine_variety_top_words, index=wine_varieties_index
-            )
+            if taste == "aroma":
+                wine_variety_descriptions = pd.DataFrame(
+                    wine_variety_top_words, index=wine_varieties_index
+                )
         wine_variety_vectors.sort_index(inplace=True)
         taste_variety_dataframes.append(wine_variety_vectors)
 
@@ -333,7 +338,7 @@ def wine_varieties(dataframe: pd.DataFrame):
         "./app/notebooks/helpers/temp/wine_variety_descriptors.csv"
     )
     wines = pd.concat(taste_variety_dataframes, axis=1, ignore_index=False)
-    wines = normalize(wines, cols_to_normalize=core_tastes[1:])
+    wines = normalize(wines, cols_to_normalize=core_tastes[1:-1])
     wines.to_csv("./app/data/production/wine_production.csv")
 
 
@@ -415,22 +420,10 @@ def generate_similiarity_dict(food_to_embeddings_dict, force=False):
 
 def main():
     modify_vocabulary()
-    wine_dataset = get_wine_dataframe()
-    # wine_dataset = wine_dataset.loc[:1000, :]
-    descriptors_in_reviews = wine_dataset["descriptors_in_reviews"].to_numpy()
-
     food_to_embeddings_dict = generate_food_embedding_dict(
         max_sentence_count=100, force=False
     )
-
-    wine_embeddings_dataframe = construct_taste_ingredient_embeddings(
-        food_to_embeddings_dict, descriptors_in_reviews
-    )
-
-    # Need to run these lines to generate clean embeddings for wines
-    wine_df = pd.concat([wine_dataset, wine_embeddings_dataframe], axis=1).reset_index()
-    wine_varieties(dataframe=wine_df)
-
+    # wine_varieties(food_to_embeddings_dict, force=False)
     generate_similiarity_dict(food_to_embeddings_dict, force=True)
 
 

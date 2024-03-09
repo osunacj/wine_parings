@@ -390,58 +390,6 @@ def view_dish_embeddings(
 def main():
     view_embeddings_of_ingredient(["chicken", "banana", "meat", "cherry", "oil"], 2)
 
-    # plot_ingredients = [
-    #     "average_sweet",
-    #     "average_salt",
-    #     "average_acid",
-    #     "average_piquant",
-    #     "average_fat",
-    #     "average_weight",
-    #     "average_bitter",
-    # ]
-
-    # plot_ingredients = [
-    #     "salty",
-    #     "maple_syrup",
-    #     "pepper",
-    #     "lemon_juice",
-    #     "kale",
-    #     "fat",
-    #     "bacon_grease",
-    #     "average_fat",
-    #     "butter",
-    # ]
-
-    # plot_ingredients = [
-    #     "water",
-    #     "tap_water",
-    #     "boiling_water",
-    #     "ice_water",
-    #     "warm_water",
-    #     "hot_water",
-    #     "cold_water",
-    # ]
-
-    # plot_ingredients = ["bacon", "salt", "average_salt", "salty", "honey", "raspberry"]
-
-    # plot_ingredients = [
-    #     "chicken",
-    #     "cooked_chicken",
-    #     "chicken_soup",
-    #     "chicken_strip",
-    #     "chicken_thigh",
-    #     "chicken_wing",
-    #     "grilled_chicken",
-    #     "fried_chicken",
-    #     "fish",
-    #     "fish_fillet",
-    #     "tuna",
-    #     "salmon",
-    #     "fish_steak",
-    # ]
-
-    # view_ingredients_embeddings(plot_ingredients)
-
 
 if __name__ == "__main__":
 
