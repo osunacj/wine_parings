@@ -234,4 +234,5 @@ def retrieve_pairing_type_info(wine_recommendations, pairing_type, top_n, wine_d
     ].to_dict("records")
     pairing_body = list(recommendation_nonaromas["weight"])
     descriptors = pairings["descriptors"].tolist()
+    descriptors = [eval(descriptor) for descriptor in descriptors]
     return wine_names, pairing_nonaromas, pairing_body, descriptors

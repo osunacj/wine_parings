@@ -45,6 +45,12 @@ def get_descriptor_frequencies():
         index_col="Unnamed: 0",
     )
 
+    variety_descriptors_path = Path("./app/data/production/variety_descriptors.csv")
+
+    if variety_descriptors_path.exists():
+        variety_descriptors = pd.read_csv(variety_descriptors_path, index_col='Unnamed: 0')
+        return variety_descriptors
+
     index = descriptor_frequencies.index
     columns = descriptor_frequencies.columns
     descriptors = []
@@ -57,7 +63,11 @@ def get_descriptor_frequencies():
             desc.append(descriptor[0])
         descriptors.append(desc)
 
-    return pd.DataFrame({"descriptors": descriptors}, index=index)
+    desc_df = pd.DataFrame({"descriptors": descriptors}, index=index)
+    wines_df = get_production_wines()
+    variety_descriptors = pd.merge(desc_df, wines_df, right_index=True, left_index=True)
+    variety_descriptors.to_csv(variety_descriptors_path)
+    return variety_descriptors
 
 
 def get_food_embedding_dict():
@@ -87,7 +97,6 @@ def get_food_taste_distances_info():
 
 
 def normalize_production_wines():
-    wines_df = get_production_wines()
     wine_weights = {
         "weight": {1: (0, 0.25), 2: (0.25, 0.50), 3: (0.50, 0.75), 4: (0.75, 1)},
         "sweet": {1: (0, 0.15), 2: (0.15, 0.2), 3: (0.2, 0.4), 4: (0.4, 1)},
@@ -97,9 +106,7 @@ def normalize_production_wines():
         "fat": {1: (0, 0.25), 2: (0.25, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
         "bitter": {1: (0, 0.12), 2: (0.12, 0.3), 3: (0.3, 0.5), 4: (0.5, 1)},
     }
-    desc_df = get_descriptor_frequencies()
-    wines = pd.merge(desc_df, wines_df, right_index=True, left_index=True)
-
+    wines = get_descriptor_frequencies()
     for taste, subdict in wine_weights.items():
         wines[taste] = wines[taste].apply(lambda x: check_in_range(subdict, x))
     wines.sort_index(inplace=True)

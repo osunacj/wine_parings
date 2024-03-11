@@ -157,7 +157,7 @@ def plot_wine_recommendations(
     number_line_nr = spider_nr + length + 1
     descriptor_nr = number_line_nr + length + 1
 
-    plot_food_profile(grid, food_attrtibutes_value, ingredients, n=1 + length)
+    plot_food_profile(grid, food_attrtibutes_value, ingredients[:5], n=1 + length)
 
     for wine in range(length):
         make_spider(
