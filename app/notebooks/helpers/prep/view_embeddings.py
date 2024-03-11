@@ -345,7 +345,7 @@ def view_embeddings_of_ingredient(ingredients: list, targets=None, N=2):
             label=ingredient,
             marker="o" if "target" not in ingredient else "x",
         )
-
+    plt.title("PCA of various ingredients")
     plt.legend()
     ax.set_xlabel("1st Component")
     ax.set_ylabel("2nd Component")
