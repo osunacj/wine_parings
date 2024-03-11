@@ -202,15 +202,6 @@ def congruent_or_contrasting(df, food_attributes):
 
 
 def sort_by_aroma_similarity(df, food_aroma):
-
-    def nparray_str_to_list(array_string):
-        average_taste_vec = re.sub("\s+", ",", array_string)
-        average_taste_vec = average_taste_vec.replace("[,", "[")
-        average_taste_vec = np.array(ast.literal_eval(average_taste_vec))
-        return average_taste_vec
-
-    df["aroma"] = df["aroma"].apply(nparray_str_to_list)
-    df["flavor"] = df["flavor"].apply(nparray_str_to_list)
     df["aroma_distance"] = df["aroma"].apply(
         lambda x: spatial.distance.cosine(x, food_aroma["aroma"])
     )
