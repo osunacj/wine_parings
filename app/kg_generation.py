@@ -122,7 +122,7 @@ def create_triplets(dataframe: pd.DataFrame, relationships: dict):
 def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFrame:
     wine_dataframe = get_wine_dataframe()
     # REMOVE THIS
-    wine_dataframe = wine_dataframe.sample(n=50, axis=0, random_state=43)
+    wine_dataframe = wine_dataframe.sample(n=30, axis=0, random_state=43)
     wine_dataframe.columns = map(str.lower, wine_dataframe.columns)
     wine_dataframe.rename(inplace=True, columns={"name": "wine"})
     wine_dataframe["vintage"].fillna(wine_dataframe["vintage"].mean(numeric_only=True))
@@ -138,7 +138,7 @@ def create_variety_descriptor_triplets(
     relationships=descriptor_relationship,
 ) -> pd.DataFrame:
     variety_descriptors = get_descriptor_frequencies()
-    variety_descriptors = variety_descriptors.sample(n=50, axis=0, random_state=43)
+    variety_descriptors = variety_descriptors.sample(n=30, axis=0, random_state=43)
     columns = variety_descriptors.columns
     for column in columns:
         if column != "descriptors":

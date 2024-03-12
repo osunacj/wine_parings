@@ -1,9 +1,14 @@
+from typing import Union
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import pickle
 from scipy import spatial
+import re
+import ast
+
+from generate_embeddings import get_food_dataframe
 from notebooks.helpers.models.embedding_model import PredictionModel
 from notebooks.helpers.prep.wine_mapping_values import food_taste_mappings
 from notebooks.helpers.prep.pairing_rules import (
@@ -48,7 +53,9 @@ def get_descriptor_frequencies():
     variety_descriptors_path = Path("./app/data/production/variety_descriptors.csv")
 
     if variety_descriptors_path.exists():
-        variety_descriptors = pd.read_csv(variety_descriptors_path, index_col='Unnamed: 0')
+        variety_descriptors = pd.read_csv(
+            variety_descriptors_path, index_col="Unnamed: 0"
+        )
         return variety_descriptors
 
     index = descriptor_frequencies.index
@@ -86,14 +93,21 @@ def get_food_taste_distances_info():
         f"./app/notebooks/helpers/models/food_similarity_dict.pkl"
     )
 
-    food_tastes_dict_path = Path(f"./app/notebooks/helpers/models/food_taste_dict.pkl")
+    # food_tastes_dict_path = Path(f"./app/notebooks/helpers/models/food_taste_dict.pkl")
 
-    with food_tastes_dict_path.open("rb") as f:
-        food_tastes_distances = pickle.load(f)
+    # with food_tastes_dict_path.open("rb") as f:
+    #     food_tastes_distances = pickle.load(f)
 
     with food_similarity_dict_path.open("rb") as f:
         food_average_distances = pickle.load(f)
     return food_average_distances
+
+
+def nparray_str_to_list(array_string):
+    average_taste_vec = re.sub("\s+", ",", array_string)
+    average_taste_vec = average_taste_vec.replace("[,", "[")
+    average_taste_vec = np.array(ast.literal_eval(average_taste_vec))
+    return average_taste_vec
 
 
 def normalize_production_wines():
@@ -106,7 +120,11 @@ def normalize_production_wines():
         "fat": {1: (0, 0.25), 2: (0.25, 0.3), 3: (0.3, 0.4), 4: (0.4, 1)},
         "bitter": {1: (0, 0.12), 2: (0.12, 0.3), 3: (0.3, 0.5), 4: (0.5, 1)},
     }
+
     wines = get_descriptor_frequencies()
+    wines["aroma"] = wines["aroma"].apply(nparray_str_to_list)
+    wines["flavor"] = wines["flavor"].apply(nparray_str_to_list)
+
     for taste, subdict in wine_weights.items():
         wines[taste] = wines[taste].apply(lambda x: check_in_range(subdict, x))
     wines.sort_index(inplace=True)
@@ -145,7 +163,7 @@ def calculate_avg_food_vec(
                 food_average_distances[core_taste]["closest"]
                 - food_average_distances[core_taste]["farthest"]
             )
-            / 3
+            / 2
         )
         taste_avg = food_average_distances[core_taste]["average_vec"]
 
@@ -229,9 +247,10 @@ def get_the_closest_embedding(food_to_embeddings_dict: dict, dish_embeddings: di
     return clean_dish_ingredeints, ingredient_similarity
 
 
-def compute_embedding_food_ingredients(food_ingredients) -> dict:
+def compute_embedding_food_ingredients(
+    food_ingredients: list, prediction_model: PredictionModel
+) -> dict:
     dish_embeddings = {}
-    prediction_model = PredictionModel()
     for ingredient in food_ingredients:
         embedding = prediction_model.compute_embedding_for_ingredient(
             " ".join(food_ingredients), ingredient
@@ -241,10 +260,16 @@ def compute_embedding_food_ingredients(food_ingredients) -> dict:
     return dish_embeddings
 
 
-def get_food_attributes(food_ingredients):
+def get_food_attributes(
+    food_ingredients: list,
+    food_to_embeddings_dict: dict,
+    prediction_model: PredictionModel,
+):
 
-    dish_embeddings = compute_embedding_food_ingredients(food_ingredients)
-    food_to_embeddings_dict = get_food_embedding_dict()
+    dish_embeddings = compute_embedding_food_ingredients(
+        food_ingredients, prediction_model
+    )
+
     food_average_distances = get_food_taste_distances_info()
     dish_embeddings, dish_similarities = get_the_closest_embedding(
         food_to_embeddings_dict, dish_embeddings
@@ -289,7 +314,7 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
     if len(contrasting_wines) >= 2 and len(congruent_wines) >= 2:
         wine_names = contrasting_wines[:2] + congruent_wines[:3]
         wine_nonaromas = contrasting_nonaromas[:2] + congruent_nonaromas[:3]
-        descriptors = congruent_descriptors
+        descriptors = contrasting_descriptors[:2] + congruent_descriptors[:3]
         wine_body = contrasting_body[:2] + congruent_body[:3]
         pairing_types = [
             "Contrasting",
@@ -316,89 +341,102 @@ def get_wine_pairings(wine_recommendations, wine_df, top_n):
         wine_body = congruent_body
         descriptors = congruent_descriptors
 
-    return wine_names, wine_nonaromas, wine_body, pairing_types, descriptors
+    return {
+        "wine_names": wine_names,
+        "wine_nonaromas": wine_nonaromas,
+        "wine_body": wine_body,
+        "pairing_types": pairing_types,
+        "descriptors": descriptors,
+    }
 
 
-def main():
-    hotdog = [
-        "sausage",
-        "mustard",
-        "tomato",
-        "onion",
-        "pickle",
-        "pepper",
-        "celery",
-        "salt",
-        "relish",
-    ]
-    salmon = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
-    salmon_2 = [
-        "smoked_salmon",
-        "dill",
-        "black_pepper",
-        "cream_cheese",
-        "creme_fraiche",
-        "bread",
-    ]
+def generate_pairing_for_ingredients(
+    food_to_embeddings_dict: dict,
+    ingredients: list,
+    wine_recommendations: pd.DataFrame,
+    prediction_model: PredictionModel,
+):
+    food_attributes, food_tastes_distances = get_food_attributes(
+        ingredients, food_to_embeddings_dict, prediction_model
+    )
 
-    pasta = [
-        "spaghetti",
-        "clam",
-        "olive_oil",
-        "garlic",
-        "butter",
-    ]
-
-    pasta_2 = ["pasta", "parmesan", "butter", "black_pepper", "salt"]
-
-    dinner = [
-        "roasted_pepper",
-        "linguine",
-        "tomato",
-        "garlic",
-        "anchovy",
-        "olive",
-        "basil",
-        "walnuts",
-    ]
-    dessert = ["goat_cheese", "ham", "hummus", "bread", "tomato", "olive_oil"]
-
-    tester = [
-        "pizza_dough",
-        "mozzarella",
-        "pepperoni",
-        "pizza_sauce",
-    ]
-
-    ingredients = dinner
-
-    food_attributes, food_tastes_distances = get_food_attributes(ingredients)
-    test_food_atributes = food_attributes
-    print(food_attributes)
-
-    wine_df = get_production_wines()
-    wine_recommendations = normalize_production_wines()
-    wine_recommendations = nonaroma_rules(wine_recommendations, test_food_atributes)
+    wine_recommendations = nonaroma_rules(wine_recommendations, food_attributes)
     wine_recommendations = congruent_or_contrasting(
-        wine_recommendations, test_food_atributes
+        wine_recommendations, food_attributes
     )
     wine_recommendations = sort_by_aroma_similarity(
         wine_recommendations, food_tastes_distances
     )
-    wine_names, wine_nonaromas, wine_body, pairing_types, descriptors = (
-        get_wine_pairings(
-            wine_recommendations,
-            wine_df,
-            top_n=4,
+    return food_attributes, wine_recommendations
+
+
+def generate_pairings(food_dataset: pd.DataFrame):
+    prediction_model = PredictionModel()
+    food_to_embeddings_dict = get_food_embedding_dict()
+    wine_recommendations = normalize_production_wines()
+
+    recipe_pairings_path = Path("./app/data/production/recipe_pairings.csv")
+    # if recipe_pairings_path.exists():
+    #     recipe_pairings = pd.read_csv(recipe_pairings_path, index_col='Unnamed: 0')
+
+    def iter_recipes(row):
+        ingredients = eval(row["ingredients_in_instructions"])
+
+        food_attributes, recommendations = generate_pairing_for_ingredients(
+            food_to_embeddings_dict=food_to_embeddings_dict,
+            ingredients=ingredients,
+            wine_recommendations=wine_recommendations,
+            prediction_model=prediction_model,
         )
+        # only interested in top 4 wines
+        return recommendations.index.T.tolist()[:4]
+
+    food_dataset[
+        ["first_pairing", "second_pairing", "third_pairing", "fourth_pairing"]
+    ] = food_dataset.apply(iter_recipes, axis=1, result_type="expand")
+
+    food_dataset.to_csv(recipe_pairings_path, index_label="index")
+
+
+def main():
+    # food_dataset = get_food_dataframe()
+    # food_dataset["ingredients_in_instructions"] = food_dataset[
+    #     "ingredients_in_instructions"
+    # ].apply(lambda x: (np.nan if x == "[]" else x))
+    # food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
+    # food_dataset = food_dataset.sample(n=30, axis=0, random_state=43)
+    # # food_dataset = food_dataset.iloc[5000:]
+    # generate_pairings(food_dataset=food_dataset)
+
+    ingredients = ["roast_chicken", "tarragon", "sage"]
+    ingredients = ["pizza_dough", "tomato_sauce", "pepperoni", "mozzarella"]
+    ingredients = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
+
+    prediction_model = PredictionModel()
+    food_to_embeddings_dict = get_food_embedding_dict()
+    wine_recommendations = normalize_production_wines()
+    wine_df = get_production_wines()
+
+    food_attributes, wine_recommendations = generate_pairing_for_ingredients(
+        food_to_embeddings_dict=food_to_embeddings_dict,
+        ingredients=ingredients,
+        wine_recommendations=wine_recommendations,
+        prediction_model=prediction_model,
     )
+
+    wine_pairings = get_wine_pairings(
+        wine_recommendations,
+        wine_df,
+        top_n=4,
+    )
+
     plot_wine_recommendations(
         ingredients=ingredients,
-        pairing_wines=wine_names,
-        wine_attributes=wine_nonaromas,
-        pairing_body=wine_body,
-        impactful_descriptors=descriptors,
-        pairing_types=pairing_types,
+        pairing_wines=wine_pairings["wine_names"],
+        wine_attributes=wine_pairings["wine_nonaromas"],
+        pairing_body=wine_pairings["wine_body"],
+        impactful_descriptors=wine_pairings["descriptors"],
+        pairing_types=wine_pairings["pairing_types"],
         top_n=4,
         food_attributes=food_attributes,
     )

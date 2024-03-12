@@ -77,14 +77,14 @@ def extract_ingredients(all_raw_ingredients, force=False):
         return ingredients_mappings
 
     list_ingredients = []
-    for ingredients in tqdm(all_raw_ingredients, total=len(all_raw_ingredients)):
+    for ingredients in all_raw_ingredients:
         for ingredient in eval(ingredients):
-            if " and " in ingredient or " or " in ingredient:
-                ingredient = ingredient.replace(" and ", " ").split(" ")
-                for ingre in ingredient:
-                    list_ingredients.append(ingre)
-            else:
-                list_ingredients.append(ingredient)
+            # if " and " in ingredient or " or " in ingredient:
+            #     ingredient = ingredient.replace(" and ", " ").split(" ")
+            #     for ingre in ingredient:
+            #         list_ingredients.append(ingre)
+            # else:
+            list_ingredients.append(ingredient)
 
     list_ingredients = list(dict.fromkeys(list_ingredients))
     ingredient_normalizer = RecipeNormalizer(lemmatization_types=["NOUN"])
@@ -120,13 +120,13 @@ def normalize_instructions(instructions_list):
 
 def main():
     ready_ingredients = True
-    force = True
+    force = False
 
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
     print(food_dataset.shape)
-    food_dataset = food_dataset.loc[:105000, :]
+    food_dataset = food_dataset.iloc[:150000]
 
     clean_ingredients = extract_ingredients(
         food_dataset.ingredients.to_numpy(), force=force

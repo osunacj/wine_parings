@@ -423,7 +423,7 @@ def main():
     food_to_embeddings_dict = generate_food_embedding_dict(
         max_sentence_count=100, force=False
     )
-    # wine_varieties(food_to_embeddings_dict, force=False)
+    wine_varieties(food_to_embeddings_dict, force=True)
     generate_similiarity_dict(food_to_embeddings_dict, force=True)
 
 

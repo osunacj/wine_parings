@@ -208,9 +208,7 @@ def sort_by_aroma_similarity(df, food_aroma):
     df["flavor_distance"] = df["flavor"].apply(
         lambda x: spatial.distance.cosine(x, food_aroma["flavor"])
     )
-    df.sort_values(
-        by=["aroma_distance", "flavor_distance"], ascending=True, inplace=True
-    )
+    df.sort_values(by=["aroma_distance"], ascending=True, inplace=True)
     return df
 
 
