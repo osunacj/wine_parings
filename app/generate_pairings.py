@@ -399,47 +399,46 @@ def generate_pairings(food_dataset: pd.DataFrame):
 
 
 def main():
-    # food_dataset = get_food_dataframe()
-    # food_dataset["ingredients_in_instructions"] = food_dataset[
-    #     "ingredients_in_instructions"
-    # ].apply(lambda x: (np.nan if x == "[]" else x))
-    # food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
-    # food_dataset = food_dataset.sample(n=30, axis=0, random_state=43)
-    # # food_dataset = food_dataset.iloc[5000:]
-    # generate_pairings(food_dataset=food_dataset)
+    food_dataset = get_food_dataframe()
+    food_dataset["ingredients_in_instructions"] = food_dataset[
+        "ingredients_in_instructions"
+    ].apply(lambda x: (np.nan if x == "[]" else x))
+    food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
+    food_dataset = food_dataset.sample(n=500, axis=0, random_state=43)
+    generate_pairings(food_dataset=food_dataset)
 
-    ingredients = ["roast_chicken", "tarragon", "sage"]
-    ingredients = ["pizza_dough", "tomato_sauce", "pepperoni", "mozzarella"]
-    ingredients = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
+    # ingredients = ["roast_chicken", "tarragon", "sage"]
+    # ingredients = ["pizza_dough", "tomato_sauce", "pepperoni", "mozzarella"]
+    # ingredients = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
 
-    prediction_model = PredictionModel()
-    food_to_embeddings_dict = get_food_embedding_dict()
-    wine_recommendations = normalize_production_wines()
-    wine_df = get_production_wines()
+    # prediction_model = PredictionModel()
+    # food_to_embeddings_dict = get_food_embedding_dict()
+    # wine_recommendations = normalize_production_wines()
+    # wine_df = get_production_wines()
 
-    food_attributes, wine_recommendations = generate_pairing_for_ingredients(
-        food_to_embeddings_dict=food_to_embeddings_dict,
-        ingredients=ingredients,
-        wine_recommendations=wine_recommendations,
-        prediction_model=prediction_model,
-    )
+    # food_attributes, wine_recommendations = generate_pairing_for_ingredients(
+    #     food_to_embeddings_dict=food_to_embeddings_dict,
+    #     ingredients=ingredients,
+    #     wine_recommendations=wine_recommendations,
+    #     prediction_model=prediction_model,
+    # )
 
-    wine_pairings = get_wine_pairings(
-        wine_recommendations,
-        wine_df,
-        top_n=4,
-    )
+    # wine_pairings = get_wine_pairings(
+    #     wine_recommendations,
+    #     wine_df,
+    #     top_n=4,
+    # )
 
-    plot_wine_recommendations(
-        ingredients=ingredients,
-        pairing_wines=wine_pairings["wine_names"],
-        wine_attributes=wine_pairings["wine_nonaromas"],
-        pairing_body=wine_pairings["wine_body"],
-        impactful_descriptors=wine_pairings["descriptors"],
-        pairing_types=wine_pairings["pairing_types"],
-        top_n=4,
-        food_attributes=food_attributes,
-    )
+    # plot_wine_recommendations(
+    #     ingredients=ingredients,
+    #     pairing_wines=wine_pairings["wine_names"],
+    #     wine_attributes=wine_pairings["wine_nonaromas"],
+    #     pairing_body=wine_pairings["wine_body"],
+    #     impactful_descriptors=wine_pairings["descriptors"],
+    #     pairing_types=wine_pairings["pairing_types"],
+    #     top_n=4,
+    #     food_attributes=food_attributes,
+    # )
 
 
 if __name__ == "__main__":
