@@ -105,7 +105,7 @@ def normalize_instructions(instructions_list):
         if type(eval(instructions)) == str:
             instruction_text = [instructions]
         else:
-            instruction_text = [step.strip() for step in eval(instructions)]
+            instruction_text = ["".join(step.strip() for step in eval(instructions))]
 
         (
             normalized_instruction,
@@ -119,8 +119,8 @@ def normalize_instructions(instructions_list):
 
 
 def main():
-    ready_ingredients = True
-    force = False
+    ready_ingredients = False
+    force = True
 
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
@@ -141,22 +141,22 @@ def main():
             normalize_instructions(food_dataset["steps"].to_numpy())
         )
 
-        f_extractor = FrequencyExtractor(
-            clean_sentences=normalized_instructions_token,
-            clean_ingredients=clean_ingredients,
-            type="food",
-        )
-        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
+        # f_extractor = FrequencyExtractor(
+        #     clean_sentences=normalized_instructions_token,
+        #     clean_ingredients=clean_ingredients,
+        #     type="food",
+        # )
+        # f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
 
         # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
         # normalized_description_token, _ = normalize_instructions(
         #     food_dataset["description"].to_numpy()
         # )
 
-        food_dataset.drop(["steps", "description"], inplace=True, axis=1)
+        # food_dataset.drop(["steps", "description"], inplace=True, axis=1)
 
-        food_dataset.loc[:, "ingredients_in_instructions"] = ingredients_in_instructions
-        food_dataset.loc[:, "clean_instructions"] = normalized_instructions_token
+        food_dataset["ingredients_in_instructions"] = ingredients_in_instructions
+        food_dataset["clean_instructions"] = normalized_instructions_token
         # food_dataset["clean_description"] = normalized_description_token
         # food_dataset["clean_name"] = normalized_name_token
 

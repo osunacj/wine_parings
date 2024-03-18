@@ -48,6 +48,15 @@ def custom_removel_component(doc):
         "drink",
         "top",
         "mix",
+        "half",
+        "cooking",
+        "baking",
+        "bake",
+        "cook",
+        "paper",
+        "towel",
+        "plastic",
+        "baking",
     ]
 
     for token in doc:
@@ -107,6 +116,15 @@ class RecipeNormalizer:
         "drink",
         "top",
         "mix",
+        "half",
+        "cooking",
+        "baking",
+        "bake",
+        "cook",
+        "paper",
+        "towel",
+        "plastic",
+        "baking",
     ]
 
     def __init__(self, lemmatization_types=None, mapping: dict = {}):
@@ -184,6 +202,7 @@ class RecipeNormalizer:
         return cleaned_ingredients
 
     def match_ingredients(self, normalized_instruction_tokens, n):
+        found_ingredients = []
         for i in range(len(normalized_instruction_tokens) - n, -1, -1):
             sublist = normalized_instruction_tokens[i : i + n]
             if (
@@ -201,6 +220,7 @@ class RecipeNormalizer:
             if clean_sublist in self.mapping:
                 new_instruction_tokens = []
                 new_ingredient = self.mapping[clean_sublist].replace(" ", "_")
+                found_ingredients.append(new_ingredient)
                 for idx, token in enumerate(normalized_instruction_tokens):
                     if idx < i or idx >= i + n:
                         new_instruction_tokens.append(token)
@@ -209,12 +229,13 @@ class RecipeNormalizer:
                         new_instruction_tokens.append(new_ingredient)
                         new_ingredient = None
 
-                return new_instruction_tokens, True
-        return normalized_instruction_tokens, False
+                return new_instruction_tokens, True, found_ingredients
+        return normalized_instruction_tokens, False, found_ingredients
 
     def normalize_instruction(self, instruction):
         instruction_docs = self.model.pipe(instruction, n_process=-1, batch_size=1)
         normalized_instruction = []
+        ingredients_in_instruction = []
         for instruction_doc in instruction_docs:
             for word in instruction_doc:
                 if word.text in [" ", "  ", "-"]:
@@ -239,39 +260,26 @@ class RecipeNormalizer:
         )
         # find all sublists of tokens with descending length
         for n in range(
-            6, 1, -1
+            5, 1, -1
         ):  # stop at 2 because matching tokens with length 1 can stay as they are
             match = True
             while match:
-                normalized_instruction_tokens, match = self.match_ingredients(
-                    normalized_instruction_tokens, n
+                normalized_instruction_tokens, match, found_ingredients = (
+                    self.match_ingredients(normalized_instruction_tokens, n)
                 )
+                ingredients_in_instruction.extend(found_ingredients)
 
-        ingredients_in_instruction = self.extract_ingredients_for_instruction(
-            normalized_instruction_tokens
+        ingredients_in_instruction.extend(
+            self.extract_ingredients_for_instruction(normalized_instruction_tokens)
         )
         return (
             "".join(normalized_instruction_tokens).strip(),
-            ingredients_in_instruction,
+            list(filter(lambda x: len(x) > 0, set(ingredients_in_instruction))),
         )
 
     def extract_ingredients_for_instruction(self, normalized_instruction_tokens):
         ingredients_in_instruction = []
         for token in normalized_instruction_tokens:
-            if (
-                token in self.not_word_tokens
-                or token in stop_words
-                or token in self.words_to_remove
-            ):
-                continue
-
-            if (
-                token not in ingredients_in_instruction
-                and len(token) > 0
-                and token.replace("_", " ") in self.mapping
-            ):
-                ingredients_in_instruction.append(
-                    self.mapping[token.replace("_", " ")].replace(" ", "_")
-                )
-
+            if token in self.mapping:
+                ingredients_in_instruction.append(self.mapping[token])
         return ingredients_in_instruction
