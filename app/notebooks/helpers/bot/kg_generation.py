@@ -1,5 +1,6 @@
 from distutils.command.build_scripts import first_line_re
 import imp
+from typing import List
 import networkx as nx
 from pyvis.network import Network
 import numpy as np
@@ -35,11 +36,11 @@ map_columns_to_relationship = {
 
 descriptor_relationship = {
     "variety_location": {
-        "first": "has_descriptor",
-        "second": "has_descriptor",
-        "third": "has_descriptor",
-        "fourth": "has_descriptor",
-        "fifth": "has_descriptor",
+        "first": "has_aroma_of",
+        "second": "has_aroma_of",
+        "third": "has_aroma_of",
+        "fourth": "has_aroma_of",
+        "fifth": "has_aroma_of",
     }
 }
 
@@ -53,15 +54,11 @@ recipe_relationships = {
 }
 
 
-skip_columns = ["0"]
-
-
-def create_nodes_from_instance(instance, mapper: dict):
-    instance_sources = []
-    instance_targets = []
-    instance_source_labels = []
-    instance_target_labels = []
-    relations = []
+def create_triplets_from_instance(
+    instance, mapper: dict, special_descriptions: List[str] = [""]
+):
+    triplets = ""
+    meta_data = {}
     for source, targets in mapper.items():
         source_value = instance[source]
         source_label = source
@@ -76,47 +73,43 @@ def create_nodes_from_instance(instance, mapper: dict):
             if target_value is np.nan or target_value == "none":
                 continue
 
-            relations.append(str(relation))
-            instance_sources.append(str(source_value))
-            instance_targets.append(str(target_value))
-            instance_source_labels.append(source_label)
-            instance_target_labels.append(target_label)
+            triplet = f"{special_descriptions[0]}**{source_value}** has a relationship of **{relation}** with **{target_value}\n"
 
-    return (
-        instance_sources,
-        instance_targets,
-        relations,
-        instance_source_labels,
-        instance_target_labels,
+            triplets += triplet
+            meta_data[target] = target_value
+
+    triplets = triplets.split("\n")[:7]
+    triplets = "\n".join(triplets)
+    return triplets, meta_data
+
+
+def create_triplets(
+    dataframe: pd.DataFrame, relationships: dict, special_descriptions: List[str]
+):
+    dataframe[["triplets", "meta_data"]] = dataframe.apply(
+        create_triplets_from_instance,
+        special_descriptions=special_descriptions,
+        mapper=relationships,
+        axis=1,
+        result_type="expand",
     )
 
+    return dataframe[["triplets", "meta_data"]]
 
-def create_triplets(dataframe: pd.DataFrame, relationships: dict):
-    triplets = {"heads": [], "tails": [], "edges": [], "h_labels": [], "t_labels": []}
 
-    # def extend_nodes():
+mappings = {"ChÃ": "Chateau", "MarquÃÂ©s": "Marques"}
 
-    for _, instance in dataframe.iterrows():
-        (
-            instance_sources,
-            instance_targets,
-            relations,
-            instance_source_labels,
-            instance_target_labels,
-        ) = create_nodes_from_instance(instance, mapper=relationships)
-        triplets["heads"].extend(instance_sources)
-        triplets["edges"].extend(relations)
-        triplets["tails"].extend(instance_targets)
-        triplets["h_labels"].extend(instance_source_labels)
-        triplets["t_labels"].extend(instance_target_labels)
 
-    return pd.DataFrame(
-        {
-            "head": triplets["heads"],
-            "tail": triplets["tails"],
-            "edges": triplets["edges"],
-        }
-    )
+def clean_name(instance):
+
+    if instance[:3] == "ChÃ":
+        name_as_list = instance.split(" ")
+        name_as_list[0] = "Chateau"
+        name_str = " ".join(name_as_list)
+        return name_str.strip()
+
+    else:
+        return instance
 
 
 def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFrame:
@@ -125,13 +118,25 @@ def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFr
     wine_dataframe = wine_dataframe.sample(n=500, axis=0, random_state=43)
     wine_dataframe.columns = map(str.lower, wine_dataframe.columns)
     wine_dataframe.rename(inplace=True, columns={"name": "wine"})
+    wine_dataframe["alcohol"] = wine_dataframe["alcohol"].apply(
+        lambda x: np.nan if str(x) == "NaN" or str(x) == "nan" else x
+    )
+    wine_dataframe["wine"] = wine_dataframe["wine"].apply(clean_name)
+    wine_dataframe["alcohol"].fillna(wine_dataframe["alcohol"].mode(), inplace=True)
     wine_dataframe["vintage"].fillna(wine_dataframe["vintage"].mean(), inplace=True)
+    wine_dataframe["price"] = wine_dataframe["price"].apply(
+        lambda x: np.nan if str(x) == "NaN" or str(x) == "nan" else x
+    )
     wine_dataframe["price"].fillna(wine_dataframe["price"].mode(), inplace=True)
     wine_dataframe["vintage"] = wine_dataframe["vintage"].apply(lambda x: int(x))
     wine_dataframe["variety_location"] = (
         wine_dataframe["variety"] + " " + wine_dataframe["geo_normalized"]
     )
-    return create_triplets(wine_dataframe, relationships)
+    # return create_triplets(wine_dataframe, relationships)
+
+    return create_triplets(
+        wine_dataframe, relationships, special_descriptions=["The wine "]
+    )
 
 
 def create_variety_descriptor_triplets(
@@ -154,7 +159,9 @@ def create_variety_descriptor_triplets(
     )
     variety_descriptors.drop(["descriptors"], inplace=True, axis=1)
 
-    return create_triplets(variety_descriptors, relationships)
+    return create_triplets(
+        variety_descriptors, relationships, special_descriptions=["The variety "]
+    )
 
 
 def create_food_triplets(relationships=recipe_relationships) -> pd.DataFrame:
@@ -162,15 +169,17 @@ def create_food_triplets(relationships=recipe_relationships) -> pd.DataFrame:
     if recipe_pairings_path.exists():
         recipe_pairings = pd.read_csv(recipe_pairings_path, index_col="index")
 
-    return create_triplets(recipe_pairings, relationships)
+    return create_triplets(
+        recipe_pairings, relationships, special_descriptions=["The dish "]
+    )
 
 
 def create_kg_triplets(sample_size=500):
     KG = pd.concat(
         [
-            create_variety_descriptor_triplets(),
             create_wine_triplets(),
             create_food_triplets(),
+            create_variety_descriptor_triplets(),
         ],
         axis=0,
     )
@@ -180,53 +189,49 @@ def create_kg_triplets(sample_size=500):
 
 def main():
 
-    # G=nx.from_pandas_edgelist(KG, "head", "tail", edge_key = 'labels', create_using=nx.MultiDiGraph())
+    KG = create_kg_triplets(sample_size=50)
 
-    KG = pd.concat(
-        [create_variety_descriptor_triplets(), create_wine_triplets()], axis=0
-    )
+    # G = nx.DiGraph()
+    # for _, row in KG.iterrows():
+    #     G.add_edge(row["head"], row["tail"], label=row["edges"])
+    #     # G.nodes[row['tail']]['label'] = row['node_label']
 
-    G = nx.DiGraph()
-    for _, row in KG.iterrows():
-        G.add_edge(row["head"], row["tail"], label=row["edges"])
-        # G.nodes[row['tail']]['label'] = row['node_label']
+    # pos = nx.spring_layout(G, seed=42, k=1)
+    # labels = nx.get_edge_attributes(G, "label")
+    # plt.figure(figsize=(12, 10))
+    # nx.draw(
+    #     G,
+    #     pos,
+    #     font_size=10,
+    #     node_size=700,
+    #     node_color="lightblue",
+    #     edge_color="gray",
+    #     alpha=0.6,
+    # )
+    # nx.draw_networkx_edge_labels(
+    #     G,
+    #     pos,
+    #     edge_labels=labels,
+    #     font_size=8,
+    #     label_pos=0.3,
+    #     verticalalignment="baseline",
+    # )
+    # plt.title("Knowledge Graph")
+    # plt.show()
 
-    pos = nx.spring_layout(G, seed=42, k=1)
-    labels = nx.get_edge_attributes(G, "label")
-    plt.figure(figsize=(12, 10))
-    nx.draw(
-        G,
-        pos,
-        font_size=10,
-        node_size=700,
-        node_color="lightblue",
-        edge_color="gray",
-        alpha=0.6,
-    )
-    nx.draw_networkx_edge_labels(
-        G,
-        pos,
-        edge_labels=labels,
-        font_size=8,
-        label_pos=0.3,
-        verticalalignment="baseline",
-    )
-    plt.title("Knowledge Graph")
-    plt.show()
-
-    net = Network(
-        notebook=True,
-        cdn_resources="remote",
-        bgcolor="#222222",
-        font_color="white",
-        height="750px",
-        width="100%",
-        select_menu=True,
-        filter_menu=True,
-    )
-    net.show_buttons(filter_="physics")
-    net.from_nx(G)
-    net.show("nx.html")
+    # net = Network(
+    #     notebook=True,
+    #     cdn_resources="remote",
+    #     bgcolor="#222222",
+    #     font_color="white",
+    #     height="750px",
+    #     width="100%",
+    #     select_menu=True,
+    #     filter_menu=True,
+    # )
+    # net.show_buttons(filter_="physics")
+    # net.from_nx(G)
+    # net.show("nx.html")
 
 
 if __name__ == "__main__":

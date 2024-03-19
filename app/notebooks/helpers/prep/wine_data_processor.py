@@ -53,6 +53,16 @@ def replace_nan_for_zero(value):
         return value
 
 
+def clean_name(instance):
+    if instance[:3] == "ChÃ":
+        name_as_list = instance.split(" ")
+        name_as_list[0] = "Chateau"
+        name_str = " ".join(name_as_list)
+        return name_str.strip()
+    else:
+        return instance
+
+
 def preprocess_wine_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     variety_geo_df = pd.read_csv(
         "./app/data/produce/varieties_all_geos_normalized.csv",
@@ -65,6 +75,7 @@ def preprocess_wine_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             "Subregion",
             "geo_normalized",
         ],
+        encoding="latin-1",
     )
 
     df.loc[:, "Variety"] = df.loc[:, "Variety"].apply(consolidate_varieties)
@@ -125,6 +136,8 @@ def preprocess_wine_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         left_on=["Variety", "geo_normalized"],
         right_on=["Variety", "geo_normalized"],
     )
+
+    df["Name"] = df["Name"].apply(clean_name)
 
     print(df.shape)
 

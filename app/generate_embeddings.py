@@ -42,7 +42,7 @@ food_terms_map = {**food_taste_mappings}
 
 
 def get_wine_dataframe():
-    wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv")
+    wine_dataset = pd.read_csv("./app/data/test/reduced_wines.csv", encoding="latin-1")
     wine_dataset.drop(["index"], inplace=True, axis=1)
     wine_dataset.reset_index(inplace=True, drop=True)
     return wine_dataset

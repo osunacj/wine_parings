@@ -151,9 +151,9 @@ def tokenize_corpus_for_term_extraction(corpus) -> list:
 
 def main():
     ready_descriptors = True
-    # wine_dataframe = merge_all_wine_files(write=True)
-    # wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
-    # wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
+    wine_dataframe = merge_all_wine_files(write=True)
+    wine_dataframe = pd.read_csv("./app/data/produce/wine_data.csv")
+    wine_dataframe = preprocess_wine_dataframe(df=wine_dataframe)
     wine_dataframe = (
         pd.read_csv("./app/data/production/wines.csv")
         .dropna(subset=["Description"])  # There are 23000 that are nan
