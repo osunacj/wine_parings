@@ -93,14 +93,14 @@ def get_food_taste_distances_info():
         f"./app/notebooks/helpers/models/food_similarity_dict.pkl"
     )
 
-    # food_tastes_dict_path = Path(f"./app/notebooks/helpers/models/food_taste_dict.pkl")
+    food_tastes_dict_path = Path(f"./app/notebooks/helpers/models/food_taste_dict.pkl")
 
-    # with food_tastes_dict_path.open("rb") as f:
-    #     food_tastes_distances = pickle.load(f)
+    with food_tastes_dict_path.open("rb") as f:
+        food_tastes_distances = pickle.load(f)
 
     with food_similarity_dict_path.open("rb") as f:
         food_average_distances = pickle.load(f)
-    return food_average_distances
+    return food_average_distances, food_tastes_distances
 
 
 def nparray_str_to_list(array_string):
@@ -155,7 +155,7 @@ def calculate_avg_food_vec(
     dish_ingredients: dict,
 ) -> dict:
     ingredients_tastes = {}
-    for core_taste in core_tastes:
+    for core_taste in core_tastes[:1]:
         sample_food_vecs = []
         thresh = (
             food_average_distances[core_taste]["closest"]
@@ -188,13 +188,13 @@ def calculate_avg_food_vec(
 # this function returns two things: a score (between 0 and 1) and a normalized value (integer between 1 and 4) for a given nonaroma
 def calculate_food_attributes(food_tastes_distances, food_average_distances):
     tastes_weights = {
-        "weight": {1: (0, 0.3), 2: (0.3, 0.5), 3: (0.5, 0.7), 4: (0.7, 1)},
-        "sweet": {1: (0, 0.45), 2: (0.45, 0.6), 3: (0.6, 0.8), 4: (0.8, 1)},
-        "acid": {1: (0, 0.4), 2: (0.4, 0.55), 3: (0.55, 0.7), 4: (0.7, 1)},
-        "salt": {1: (0, 0.3), 2: (0.3, 0.55), 3: (0.55, 0.8), 4: (0.8, 1)},
-        "piquant": {1: (0, 0.4), 2: (0.4, 0.6), 3: (0.6, 0.8), 4: (0.8, 1)},
-        "fat": {1: (0, 0.4), 2: (0.4, 0.5), 3: (0.5, 0.6), 4: (0.6, 1)},
-        "bitter": {1: (0, 0.3), 2: (0.3, 0.5), 3: (0.5, 0.65), 4: (0.65, 1)},
+        "weight": {1: (0, 0.45), 2: (0.45, 0.65), 3: (0.65, 0.75), 4: (0.75, 1)},
+        "sweet": {1: (0, 0.4), 2: (0.4, 0.55), 3: (0.55, 0.7), 4: (0.7, 1)},
+        "acid": {1: (0, 0.4), 2: (0.4, 0.6), 3: (0.6, 0.8), 4: (0.8, 1)},
+        "salt": {1: (0, 0.5), 2: (0.5, 0.65), 3: (0.65, 0.8), 4: (0.8, 1)},
+        "piquant": {1: (0, 0.4), 2: (0.4, 0.55), 3: (0.55, 0.75), 4: (0.75, 1)},
+        "fat": {1: (0, 0.5), 2: (0.5, 0.6), 3: (0.6, 0.75), 4: (0.75, 1)},
+        "bitter": {1: (0, 0.5), 2: (0.5, 0.6), 3: (0.6, 0.75), 4: (0.75, 1)},
     }
     food_attributes = dict()
     for taste in core_tastes:
@@ -202,7 +202,7 @@ def calculate_food_attributes(food_tastes_distances, food_average_distances):
             continue
 
         similarity = 1 - spatial.distance.cosine(
-            food_average_distances[taste]["closest_vec"], food_tastes_distances[taste]
+            food_average_distances[taste]["average_vec"], food_tastes_distances["aroma"]
         )  # type: ignore
         # scale the similarity using our minmax scaler
         scaled_similarity = minmax_scaler(
@@ -399,46 +399,58 @@ def generate_pairings(food_dataset: pd.DataFrame):
 
 
 def main():
-    food_dataset = get_food_dataframe()
-    food_dataset["ingredients_in_instructions"] = food_dataset[
-        "ingredients_in_instructions"
-    ].apply(lambda x: (np.nan if x == "[]" else x))
-    food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
-    food_dataset = food_dataset.sample(n=500, axis=0, random_state=43)
-    generate_pairings(food_dataset=food_dataset)
+    # food_dataset = get_food_dataframe()
+    # food_dataset["ingredients_in_instructions"] = food_dataset[
+    #     "ingredients_in_instructions"
+    # ].apply(lambda x: (np.nan if x == "[]" else x))
+    # food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
+    # food_dataset = food_dataset.sample(n=500, axis=0, random_state=43)
+    # generate_pairings(food_dataset=food_dataset)
 
     # ingredients = ["roast_chicken", "tarragon", "sage"]
     # ingredients = ["pizza_dough", "tomato_sauce", "pepperoni", "mozzarella"]
+    ingredients = [
+        "oregano",
+        "onion",
+        "basil",
+        "beef",
+        "green_bean",
+        "garlic",
+        "corn",
+        "chuck",
+        "carrot",
+        "potato",
+    ]
     # ingredients = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
 
-    # prediction_model = PredictionModel()
-    # food_to_embeddings_dict = get_food_embedding_dict()
-    # wine_recommendations = normalize_production_wines()
-    # wine_df = get_production_wines()
+    prediction_model = PredictionModel()
+    food_to_embeddings_dict = get_food_embedding_dict()
+    wine_recommendations = normalize_production_wines()
+    wine_df = get_production_wines()
 
-    # food_attributes, wine_recommendations = generate_pairing_for_ingredients(
-    #     food_to_embeddings_dict=food_to_embeddings_dict,
-    #     ingredients=ingredients,
-    #     wine_recommendations=wine_recommendations,
-    #     prediction_model=prediction_model,
-    # )
+    food_attributes, wine_recommendations = generate_pairing_for_ingredients(
+        food_to_embeddings_dict=food_to_embeddings_dict,
+        ingredients=ingredients,
+        wine_recommendations=wine_recommendations,
+        prediction_model=prediction_model,
+    )
 
-    # wine_pairings = get_wine_pairings(
-    #     wine_recommendations,
-    #     wine_df,
-    #     top_n=4,
-    # )
+    wine_pairings = get_wine_pairings(
+        wine_recommendations,
+        wine_df,
+        top_n=4,
+    )
 
-    # plot_wine_recommendations(
-    #     ingredients=ingredients,
-    #     pairing_wines=wine_pairings["wine_names"],
-    #     wine_attributes=wine_pairings["wine_nonaromas"],
-    #     pairing_body=wine_pairings["wine_body"],
-    #     impactful_descriptors=wine_pairings["descriptors"],
-    #     pairing_types=wine_pairings["pairing_types"],
-    #     top_n=4,
-    #     food_attributes=food_attributes,
-    # )
+    plot_wine_recommendations(
+        ingredients=ingredients,
+        pairing_wines=wine_pairings["wine_names"],
+        wine_attributes=wine_pairings["wine_nonaromas"],
+        pairing_body=wine_pairings["wine_body"],
+        impactful_descriptors=wine_pairings["descriptors"],
+        pairing_types=wine_pairings["pairing_types"],
+        top_n=4,
+        food_attributes=food_attributes,
+    )
 
 
 if __name__ == "__main__":
