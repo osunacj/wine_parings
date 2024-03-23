@@ -162,7 +162,7 @@ def nonaroma_rules(wine_df, food_attributes):
     for rule in list_of_rules:
         # only apply the rule if it retains a sufficient number of wines in the selection.
         df_test = rule(df, food_attributes)
-        if df_test.shape[0] > 3:
+        if df_test.shape[0] > 4:
             df = rule(df, food_attributes)
     #         print(df.shape)
     return df
@@ -205,9 +205,9 @@ def sort_by_aroma_similarity(df, food_aroma):
     df["aroma_distance"] = df["aroma"].apply(
         lambda x: spatial.distance.cosine(x, food_aroma["aroma"])
     )
-    df["flavor_distance"] = df["flavor"].apply(
-        lambda x: spatial.distance.cosine(x, food_aroma["flavor"])
-    )
+    # df["flavor_distance"] = df["flavor"].apply(
+    #     lambda x: spatial.distance.cosine(x, food_aroma["flavor"])
+    # )
     df.sort_values(by=["aroma_distance"], ascending=True, inplace=True)
     return df
 
