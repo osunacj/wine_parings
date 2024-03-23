@@ -119,14 +119,13 @@ def normalize_instructions(instructions_list):
 
 
 def main():
-    ready_ingredients = False
-    force = True
+    ready_ingredients = True
+    force = False
 
     food_dataset = read_data_and_parse_columns()
     food_dataset.dropna(subset=["steps"], inplace=True)
 
     print(food_dataset.shape)
-    food_dataset = food_dataset.iloc[:150000]
 
     clean_ingredients = extract_ingredients(
         food_dataset.ingredients.to_numpy(), force=force
@@ -141,12 +140,12 @@ def main():
             normalize_instructions(food_dataset["steps"].to_numpy())
         )
 
-        # f_extractor = FrequencyExtractor(
-        #     clean_sentences=normalized_instructions_token,
-        #     clean_ingredients=clean_ingredients,
-        #     type="food",
-        # )
-        # f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
+        f_extractor = FrequencyExtractor(
+            clean_sentences=normalized_instructions_token,
+            clean_ingredients=clean_ingredients,
+            type="food",
+        )
+        f_extractor.count_all_ingredients(exclude_rare=True, min_threshold=20)
 
         # normalized_name_token, _ = normalize_instructions(food_dataset["name"].to_numpy())
         # normalized_description_token, _ = normalize_instructions(

@@ -55,7 +55,7 @@ recipe_relationships = {
 
 
 def create_triplets_from_instance(
-    instance, mapper: dict, special_descriptions: List[str] = [""]
+    instance, mapper: dict, special_description: str = "wine"
 ):
     triplets = ""
     meta_data = {}
@@ -73,23 +73,22 @@ def create_triplets_from_instance(
             if target_value is np.nan or target_value == "none":
                 continue
 
-            triplet = f"{special_descriptions[0]}**{source_value}** has a relationship of **{relation}** with **{target_value}\n"
+            triplet = f"The object {special_description}, **{source_value}** has a relationship of **{relation}** with the object **{target_value}\n"
 
             triplets += triplet
             meta_data[target] = target_value
 
-    triplets = triplets.split("\n")[:7]
-    triplets = "\n".join(triplets)
+    # triplets = triplets.split("\n")[:7]
+    # triplets = "\n".join(triplets)
     return triplets, meta_data
 
 
 def create_triplets(
-    dataframe: pd.DataFrame, relationships: dict, special_descriptions: List[str]
+    dataframe: pd.DataFrame, relationships: dict, special_description: str
 ):
     dataframe[["triplets", "meta_data"]] = dataframe.apply(
         create_triplets_from_instance,
-        special_descriptions=special_descriptions,
-        mapper=relationships,
+        args=(relationships, special_description),
         axis=1,
         result_type="expand",
     )
@@ -134,9 +133,10 @@ def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFr
     )
     # return create_triplets(wine_dataframe, relationships)
 
-    return create_triplets(
-        wine_dataframe, relationships, special_descriptions=["The wine "]
+    triplets = create_triplets(
+        wine_dataframe, relationships, special_description="wine"
     )
+    return triplets
 
 
 def create_variety_descriptor_triplets(
@@ -160,7 +160,7 @@ def create_variety_descriptor_triplets(
     variety_descriptors.drop(["descriptors"], inplace=True, axis=1)
 
     return create_triplets(
-        variety_descriptors, relationships, special_descriptions=["The variety "]
+        variety_descriptors, relationships, special_description="variety"
     )
 
 
@@ -169,9 +169,7 @@ def create_food_triplets(relationships=recipe_relationships) -> pd.DataFrame:
     if recipe_pairings_path.exists():
         recipe_pairings = pd.read_csv(recipe_pairings_path, index_col="index")
 
-    return create_triplets(
-        recipe_pairings, relationships, special_descriptions=["The dish "]
-    )
+    return create_triplets(recipe_pairings, relationships, special_description="dish")
 
 
 def create_kg_triplets(sample_size=500):

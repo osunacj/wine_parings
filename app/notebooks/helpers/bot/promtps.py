@@ -48,7 +48,7 @@ CONTEXT_TEMPLATE = (
 )
 
 
-question_gen_query = "You are a professor for master sommeliers, experots in wine. Your task is to setup \
+question_gen_query = "You are a professor for master sommeliers, experts in wine. Your task is to setup \
 {num_questions_per_chunk} questions for an upcoming \
 examination. The questions should be diverse in nature \
 across the document. Restrict the questions to the \

@@ -54,7 +54,6 @@ def display_eval_df(
 def main():
     KG = create_kg_triplets(sample_size=500)
     kg_pairings = KG.apply(generate_pairings_documents, axis=1)
-    kg_pairings = kg_pairings.sample(n=30)
 
     llm = load_llm("ollama")
     embed_model = load_embedding_model("foodbert")
@@ -74,25 +73,32 @@ def main():
         use_global_node_triplets=True,
         max_keywords_per_query=10,
         num_chunks_per_query=10,
-        similarity_top_k=4,
-        graph_store_query_depth=4,
+        similarity_top_k=2,
+        graph_store_query_depth=2,
     )
 
-    eval_dataset_path = Path("./app/data/evaluation/evaluation.csv")
-    if eval_dataset_path.exists():
-        eval_dataset = pd.read_csv(eval_dataset_path, index_col="Unnamed: 0")
-    else:
-        data_generator = DatasetGenerator.from_documents(
-            kg_pairings,
-            service_context=service_context,
-            question_gen_query=question_gen_query,
-        )
+    response = chat_engine.chat(
+        "What are the primary grape varieties used in producing Bordeaux wines?",
+    )
 
-        eval_dataset = data_generator.generate_dataset_from_nodes()
+    print(response)
 
-        pd.DataFrame(
-            {"questions": eval_dataset.questions, "responses": eval_dataset.responses}
-        ).to_csv(eval_dataset_path)
+    # eval_dataset_path = Path("./app/data/evaluation/evaluation.csv")
+    # if eval_dataset_path.exists():
+    #     eval_dataset = pd.read_csv(eval_dataset_path, index_col="Unnamed: 0")
+    # else:
+    #     data_generator = DatasetGenerator.from_documents(
+    #         kg_pairings,
+    #         service_context=service_context,
+    #         question_gen_query=question_gen_query,
+    #         num_questions_per_chunk=5,
+    #     )
+
+    #     eval_dataset = data_generator.generate_dataset_from_nodes(num=5)
+
+    #     pd.DataFrame(
+    #         {"questions": eval_dataset.questions, "responses": eval_dataset.responses}
+    #     ).to_csv(eval_dataset_path)
 
     # evaluator = RelevancyEvaluator(service_context=service_context)
 

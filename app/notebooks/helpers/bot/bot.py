@@ -54,7 +54,7 @@ def extract_triplets_from_document(text):
     triplets_list = []
     for triplet in triplets:
         triplet = triplet.split("**")
-        if len(triplet) >= 5:
+        if len(triplet) >= 6:
             triplets_list.append(
                 (triplet[1].strip(), triplet[3].strip(), triplet[5].strip())
             )
@@ -99,7 +99,7 @@ def load_embedding_model(embedding_model_name: str) -> HuggingFaceEmbedding:
         )
 
 
-def service(chunk_size=512, llm=None, embed_model=None):
+def service(chunk_size=256, llm=None, embed_model=None):
     return ServiceContext.from_defaults(
         chunk_size=chunk_size,
         llm=llm,
@@ -114,7 +114,7 @@ def setup_index_and_storage(
     service,
     kg_pairings=None,
     storage_path="./app/data/graph_storage/",
-    max_triplets_chunk=15,
+    max_triplets_chunk=10,
     manually_construct_kg=True,
     show_progress=False,
     force=False,
@@ -175,11 +175,12 @@ def get_chat_engine(
     chat_mode="context",
     use_global_node_triplets=True,
     max_keywords_per_query=10,
-    num_chunks_per_query=10,
-    similarity_top_k=4,
-    graph_store_query_depth=4,
+    num_chunks_per_query=15,
+    similarity_top_k=2,
+    graph_store_query_depth=2,
+    token_limit=5000,
 ):
-    memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
+    memory = ChatMemoryBuffer.from_defaults(token_limit=token_limit)
 
     chat_engine = kg_index.as_chat_engine(
         chat_mode=chat_mode,

@@ -733,10 +733,10 @@ food_taste_mappings = {
         "cake",
         # "potato_chip",
         "sausage",
-        "bacon fat",
+        # "bacon fat",
         # "bacone_grease",
         "oil",
-        "deep fat",
+        # "deep fat",
         "vegetable oil",
     ],
     "bitter": [

@@ -146,7 +146,7 @@ def congruent_pairing(pairing_type, max_food_nonaroma_val, wine_nonaroma_val):
     elif wine_nonaroma_val >= max_food_nonaroma_val:
         return "congruent"
     else:
-        return "contrasting"
+        return ""
 
 
 def nonaroma_rules(wine_df, food_attributes):

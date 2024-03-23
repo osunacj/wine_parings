@@ -338,8 +338,8 @@ def wine_varieties(food_to_embeddings_dict, force=False):
         "./app/notebooks/helpers/temp/wine_variety_descriptors.csv"
     )
     wines = pd.concat(taste_variety_dataframes, axis=1, ignore_index=False)
-    wines = normalize(wines, cols_to_normalize=core_tastes[1:-1])
-    wines.to_csv("./app/data/production/wine_production.csv")
+    wines_norm = normalize(wines, cols_to_normalize=core_tastes[1:-1])
+    wines_norm.to_csv("./app/data/production/wine_production.csv")
 
 
 def generate_similiarity_dict(food_to_embeddings_dict, force=False):
@@ -423,7 +423,7 @@ def main():
     food_to_embeddings_dict = generate_food_embedding_dict(
         max_sentence_count=100, force=False
     )
-    wine_varieties(food_to_embeddings_dict, force=True)
+    # wine_varieties(food_to_embeddings_dict, force=True)
     generate_similiarity_dict(food_to_embeddings_dict, force=True)
 
 

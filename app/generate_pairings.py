@@ -427,14 +427,14 @@ def main():
     #     "potato",
     # ]
     # ingredients = ["smoked_salmon", "dill", "cucumber", "sour_cream"]
-    ingredients = [
-        "butter",
-        "ground_black_pepper",
-        "beef_steak",
-        "mushroom",
-        "heavy_cream",
-    ]
-
+    # ingredients = [
+    #     "butter",
+    #     "ground_black_pepper",
+    #     "beef_steak",
+    #     "mushroom",
+    #     "heavy_cream",
+    # ]
+    ingredients = ["beef_roast", "mushroom_gravy", "black_pepper"]
     # ingredients = ["sausage", "tomato", "onion", "pickle", "relish", "mustard"]
 
     prediction_model = PredictionModel()

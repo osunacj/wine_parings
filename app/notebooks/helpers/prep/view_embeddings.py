@@ -146,7 +146,7 @@ def plot_wine_recommendations(
 
     plt.figure(figsize=(20, 7), dpi=96)
 
-    grid = gridspec.GridSpec(3, top_n + 1, height_ratios=[3, 0.5, 1])
+    grid = gridspec.GridSpec(3, top_n + 1, height_ratios=[3, 0.2, 0.9])
 
     food_attrtibutes_value = {
         taste: value[0] for taste, value in food_attributes.items()
@@ -202,7 +202,7 @@ def plot_food_profile(grid, food_attributes, ingredients, n):
         food_attributes,
         "Food Profile",
         "green",
-        [],
+        "",
         food_attributes,
     )
     plot_number_line(grid, n, weight, dot_color="green")
