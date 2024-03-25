@@ -90,7 +90,7 @@ def make_spider(grid, n, wine_attributes, title, color, pairing_type, food_attri
 
     title_incl_pairing_type = new_title + "\n" + "(" + str(pairing_type) + ")"
 
-    plt.title(title_incl_pairing_type, size=13, color="black", y=1.2)
+    plt.title(title_incl_pairing_type, size=10, color="black", y=1.2)
 
 
 def plot_number_line(gs, n, value, dot_color):

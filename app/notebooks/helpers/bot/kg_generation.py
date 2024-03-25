@@ -1,5 +1,3 @@
-from distutils.command.build_scripts import first_line_re
-import imp
 from typing import List
 import networkx as nx
 from pyvis.network import Network
@@ -12,19 +10,21 @@ from generate_pairings import get_descriptor_frequencies
 
 
 map_columns_to_relationship = {
-    "variety": {"category": "from_category", "variety_location": "variety_location"},
+    "variety": {
+        "category": "type_of",
+        "variety_location": "variety_location",
+    },
     "wine": {
         "alcohol": "has_alcohol",
-        "category": "has_category",
-        "price": "has_price",
+        "price": "has_price_of",
         "variety": "has_variety",
-        "vintage": "vintage_year",
-        "winery": "from_winery",
+        "vintage": "vintage_year_of",
+        "winery": "produced_by_winery",
     },
     "province": {
-        "country": "from_country",
+        "country": "in_country",
     },
-    "region": {"province": "from_province"},
+    "region": {"province": "in_province"},
     "winery": {
         "province": "from_province",
         "region": "from_region",
@@ -55,7 +55,7 @@ recipe_relationships = {
 
 
 def create_triplets_from_instance(
-    instance, mapper: dict, special_description: str = "wine"
+    instance, mapper: dict, special_description: str = "wine", for_model: bool = True
 ):
     triplets = ""
     meta_data = {}
@@ -73,27 +73,42 @@ def create_triplets_from_instance(
             if target_value is np.nan or target_value == "none":
                 continue
 
-            triplet = f"The object {special_description}, **{source_value}** has a relationship of **{relation}** with the object **{target_value}\n"
+            if for_model:
+                triplet = f"The object {special_description}, **{source_value}** has a relationship of **{relation}** with the object **{target_value}\n"
+            else:
+                triplet = f"{source_value}**{relation}**{target_value}\n"
 
             triplets += triplet
             meta_data[target] = target_value
 
-    # triplets = triplets.split("\n")[:7]
-    # triplets = "\n".join(triplets)
-    return triplets, meta_data
+    if for_model:
+        return triplets, meta_data
+    else:
+        return triplets
 
 
 def create_triplets(
-    dataframe: pd.DataFrame, relationships: dict, special_description: str
+    dataframe: pd.DataFrame,
+    relationships: dict,
+    special_description: str,
+    for_model: bool = True,
 ):
-    dataframe[["triplets", "meta_data"]] = dataframe.apply(
-        create_triplets_from_instance,
-        args=(relationships, special_description),
-        axis=1,
-        result_type="expand",
-    )
+    if for_model:
+        dataframe[["triplets", "meta_data"]] = dataframe.apply(
+            create_triplets_from_instance,
+            args=(relationships, special_description, for_model),
+            axis=1,
+            result_type="expand",
+        )
 
-    return dataframe[["triplets", "meta_data"]]
+        return dataframe[["triplets", "meta_data"]]
+    else:
+        dataframe["triplets"] = dataframe.apply(
+            create_triplets_from_instance,
+            args=(relationships, special_description, for_model),
+            axis=1,
+        )
+        return dataframe[["triplets"]]
 
 
 mappings = {"ChÃ": "Chateau", "MarquÃÂ©s": "Marques"}
@@ -111,10 +126,18 @@ def clean_name(instance):
         return instance
 
 
-def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFrame:
+def create_wine_triplets(
+    relationships=map_columns_to_relationship, n=5000, for_model: bool = True
+) -> pd.DataFrame:
+    wine_triplets_path = Path("./app/data/kg_triplets/wine_triplets.csv")
+
+    # if wine_triplets_path.exists():
+    #     triplets = pd.read_csv(wine_triplets_path, index_col="Unnamed: 0")
+    #     return triplets
+
     wine_dataframe = get_wine_dataframe()
     # REMOVE THIS
-    wine_dataframe = wine_dataframe.sample(n=500, axis=0, random_state=43)
+    wine_dataframe = wine_dataframe.sample(n=n, axis=0, random_state=43)
     wine_dataframe.columns = map(str.lower, wine_dataframe.columns)
     wine_dataframe.rename(inplace=True, columns={"name": "wine"})
     wine_dataframe["alcohol"] = wine_dataframe["alcohol"].apply(
@@ -131,16 +154,17 @@ def create_wine_triplets(relationships=map_columns_to_relationship) -> pd.DataFr
     wine_dataframe["variety_location"] = (
         wine_dataframe["variety"] + " " + wine_dataframe["geo_normalized"]
     )
-    # return create_triplets(wine_dataframe, relationships)
-
     triplets = create_triplets(
-        wine_dataframe, relationships, special_description="wine"
+        wine_dataframe, relationships, special_description="wine", for_model=for_model
     )
+
+    # triplets.to_csv(wine_triplets_path)
+
     return triplets
 
 
 def create_variety_descriptor_triplets(
-    relationships=descriptor_relationship,
+    relationships=descriptor_relationship, for_model: bool = True
 ) -> pd.DataFrame:
     variety_descriptors = get_descriptor_frequencies()
     columns = variety_descriptors.columns
@@ -160,24 +184,31 @@ def create_variety_descriptor_triplets(
     variety_descriptors.drop(["descriptors"], inplace=True, axis=1)
 
     return create_triplets(
-        variety_descriptors, relationships, special_description="variety"
+        variety_descriptors,
+        relationships,
+        special_description="variety",
+        for_model=for_model,
     )
 
 
-def create_food_triplets(relationships=recipe_relationships) -> pd.DataFrame:
+def create_food_triplets(
+    relationships=recipe_relationships, for_model: bool = True
+) -> pd.DataFrame:
     recipe_pairings_path = Path("./app/data/production/recipe_pairings.csv")
     if recipe_pairings_path.exists():
         recipe_pairings = pd.read_csv(recipe_pairings_path, index_col="index")
 
-    return create_triplets(recipe_pairings, relationships, special_description="dish")
+    return create_triplets(
+        recipe_pairings, relationships, special_description="dish", for_model=for_model
+    )
 
 
-def create_kg_triplets(sample_size=500):
+def create_kg_triplets(sample_size=1000, for_model: bool = True):
     KG = pd.concat(
         [
-            create_wine_triplets(),
-            create_food_triplets(),
-            create_variety_descriptor_triplets(),
+            create_food_triplets(for_model=for_model),
+            create_wine_triplets(n=5000, for_model=for_model),
+            create_variety_descriptor_triplets(for_model=for_model),
         ],
         axis=0,
     )
