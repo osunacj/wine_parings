@@ -34,6 +34,7 @@ llama-index-llms-ollama = "*"
 llama-index-llms-huggingface = "*"
 llama-index-embeddings-huggingface = "*"
 ragas = "*"
+llama-index-embeddings-openai = "*"
 
 [dev-packages]
 pycodestyle = "*"

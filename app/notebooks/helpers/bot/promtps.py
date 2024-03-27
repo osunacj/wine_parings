@@ -26,13 +26,13 @@ WINE_KG_PROMPT = PromptTemplate(
 )
 
 KEYWORD_EXTRACT_PROMPT = (
-    "Given the question below, extract up to {max_keywords}"
-    "keywords from the question. Focus on extracting keywords that can be used"
-    "to best lookup answers to the question, specilly focus on food, ingredients, wines, and aromas. Avoid stopwords.\n"
+    "From the question below extract up to {max_keywords} "
+    "keywords. Focus on extracting keywords that can be used "
+    "to best retrieve answers to the question, specilly focus on food and wine. Avoid stopwords.\n"
     "---------------------\n"
     "{question}\n"
     "---------------------\n"
-    "Provide keywords in the following comma-separated format: 'KEYWORDS: <keywords>'\n"
+    "Provide keywords in the following comma-separated format KEYWORDS: '<keyword>, <keyword>'\n"
 )
 PAIRING_KEYWORD_EXTRACT = PromptTemplate(
     KEYWORD_EXTRACT_PROMPT,

@@ -11,9 +11,12 @@ from llama_index.core.graph_stores import SimpleGraphStore
 
 # from llama_index.core.node_parser import SentenceSplitter
 from llama_index.llms.ollama import Ollama
+from llama_index.llms.openai import OpenAI
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 
+# from llama_index.embeddings.ollama import OllamaEmbedding
 
 from llama_index.core.memory import ChatMemoryBuffer
 from .kg_generation import create_kg_triplets
@@ -28,9 +31,15 @@ from pathlib import Path
 
 import logging
 import sys
+from dotenv import get_key
+import openai
 
+
+openai.api_key = get_key("./app/.env", "OPENAI_API_KEY")
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+
+MEMORY = ChatMemoryBuffer.from_defaults(token_limit=5000)
 
 
 def generate_pairings_documents(instance) -> Document:
@@ -41,7 +50,7 @@ def generate_pairings_documents(instance) -> Document:
             if type(instance["meta_data"]) != str
             else eval(instance["meta_data"])
         ),
-        metadata_seperator="::",
+        metadata_seperator="\n",
         metadata_template="{key}=>{value}",
         text_template="Metadata: {metadata_str}\n-----\nContent: {content}",
     )
@@ -50,7 +59,7 @@ def generate_pairings_documents(instance) -> Document:
 
 def extract_triplets_from_document(text):
     triplets = []
-    triplets = text.split("Content:")[1].strip().split("\n")
+    triplets = text.split("Content:")[1].strip().split("\n")[:-1]
     triplets_list = []
     for triplet in triplets:
         triplet = triplet.split("**")
@@ -66,6 +75,20 @@ def load_llm(llm_name: str):
     if llm_name == "ollama":
         llm = Ollama(
             model="llama2", temperature=0, request_timeout=500.0, context_window=1536
+        )
+
+    elif llm_name == "openai4":
+        llm = OpenAI(
+            model="gpt-4",
+            temperature=0.0,
+            max_tokens=1536,
+        )
+    elif llm_name == "openai3.5":
+        llm = OpenAI(
+            model="gpt-3.5-turbo-0125",
+            temperature=0.0,
+            max_tokens=2000,
+            context_window=1536,
         )
 
     elif llm_name == "gpt2":
@@ -85,7 +108,7 @@ def load_llm(llm_name: str):
     return llm
 
 
-def load_embedding_model(embedding_model_name: str) -> HuggingFaceEmbedding:
+def load_embedding_model(embedding_model_name: str):
     if embedding_model_name == "foodbert":
         PM = PredictionModel()
         return HuggingFaceEmbedding(
@@ -93,19 +116,20 @@ def load_embedding_model(embedding_model_name: str) -> HuggingFaceEmbedding:
             tokenizer=PM.tokenizer,
             device=PM.device,
         )
-    elif embedding_model_name == "ollama":
-        return Ollama(
-            model="llama2", temperature=0, request_timeout=500.0, context_window=1536
+    elif embedding_model_name == "openai3":
+        return OpenAIEmbedding(
+            model="text-embedding-3-small",
+            dimensions=768,
         )
 
 
-def service(chunk_size=256, llm=None, embed_model=None):
+def service(chunk_size=384, llm=None, embed_model=None):
     return ServiceContext.from_defaults(
         chunk_size=chunk_size,
         llm=llm,
         embed_model=embed_model,
         system_prompt=(
-            "You are a master sommelier with extent knowledge of wine, food and their best pairings. Therefore, you will help by recommending wine or food."
+            "You are a master sommelier with extent knowledge of wine and food pairings. Therefore, you can help by answering wine and food related questions."
         ),
     )
 
@@ -115,6 +139,7 @@ def setup_index_and_storage(
     kg_pairings=None,
     storage_path="./app/data/graph_storage/",
     max_triplets_chunk=10,
+    max_object_length=128,
     manually_construct_kg=True,
     show_progress=False,
     force=False,
@@ -137,7 +162,7 @@ def setup_index_and_storage(
             show_progress=True,
             edge_types=edge_types,
             tags=tags,
-            max_object_length=256,
+            max_object_length=max_object_length,
             kg_triplet_extract_fn=(
                 extract_triplets_from_document if manually_construct_kg else None
             ),
@@ -158,7 +183,7 @@ def setup_index_and_storage(
             show_progress=show_progress,
             edge_types=edge_types,
             tags=tags,
-            max_object_length=256,
+            max_object_length=max_object_length,
             kg_triplet_extract_fn=(
                 extract_triplets_from_document if manually_construct_kg else None
             ),
@@ -170,17 +195,16 @@ def setup_index_and_storage(
 
 def get_chat_engine(
     kg_index,
-    response_mode="tree_summarize",
+    response_mode="compact",
     retriver_mode="hybrid",
     chat_mode="context",
     use_global_node_triplets=True,
     max_keywords_per_query=10,
-    num_chunks_per_query=15,
-    similarity_top_k=2,
-    graph_store_query_depth=2,
-    token_limit=5000,
+    num_chunks_per_query=10,
+    similarity_top_k=3,
+    graph_store_query_depth=3,
+    memory=MEMORY,
 ):
-    memory = ChatMemoryBuffer.from_defaults(token_limit=token_limit)
 
     chat_engine = kg_index.as_chat_engine(
         chat_mode=chat_mode,
@@ -201,45 +225,72 @@ def get_chat_engine(
     return chat_engine
 
 
-def main():
+def get_query_engine(
+    kg_index,
+    response_mode="compact",
+    retriver_mode="hybrid",
+    chat_mode="context",
+    use_global_node_triplets=True,
+    max_keywords_per_query=10,
+    num_chunks_per_query=10,
+    similarity_top_k=3,
+    graph_store_query_depth=3,
+    include_text=True,
+):
 
-    KG = create_kg_triplets()
-    kg_pairings = KG.apply(generate_pairings_documents, axis=1)
-
-    llm = load_llm("ollama")
-    embed_model = load_embedding_model("foodbert")
-    service_context = service(llm=llm, embed_model=embed_model)
-
-    storage_context, kg_index = setup_index_and_storage(
-        service=service_context,
-        kg_pairings=kg_pairings,
-        show_progress=False,
-        force=True,
+    query_engine = kg_index.as_query_engine(
+        chat_mode=chat_mode,
+        memory=MEMORY,
+        retriever_mode=retriver_mode,
+        response_mode=response_mode,
+        verbose=True,
+        include_text=include_text,
+        max_keywords_per_query=max_keywords_per_query,
+        num_chunks_per_query=num_chunks_per_query,
+        similarity_top_k=similarity_top_k,
+        graph_store_query_depth=graph_store_query_depth,
+        context_template=CONTEXT_TEMPLATE,
+        use_global_node_triplets=use_global_node_triplets,
+        kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
     )
 
-    # query_str = "For dinner, I am cooking a corn risotto, can you recommend a wine?"
+    return query_engine
 
-    # chat_engine = get_chat_engine(
-    #     kg_index, chat_mode="context", retriver_mode="keyword"
-    # )
-    # response = chat_engine.chat(query_str)
 
-    # print(response)
+def get_simple_query(
+    response_mode="compact",
+    retriver_mode="hybrid",
+    chat_mode="context",
+    include_text=False,
+):
+    llm = load_llm("openai3.5")
+    embed_model = load_embedding_model("openai3")
+    service_context = service(llm=llm, embed_model=embed_model)
 
-    # response = chat_engine.chat(
-    #     "But if I do not like white wines, what other wines would you recommend based on my dinner?",
-    # )
+    kg_index = KnowledgeGraphIndex.from_documents(
+        documents=[
+            Document(
+                text="",
+            )
+        ],
+        service_context=service_context,
+        include_embeddings=True,
+    )
 
-    # print(response)
+    return kg_index.as_query_engine(
+        chat_mode=chat_mode,
+        memory=MEMORY,
+        retriever_mode=retriver_mode,
+        response_mode=response_mode,
+        verbose=True,
+        include_text=include_text,
+        context_template=CONTEXT_TEMPLATE,
+        kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
+    )
 
-    # evaluator = FaithfulnessEvaluator(llm=llm)
 
-    # # query_engine = kg_index.as_query_engine()
-    # query = "What type of wine is Chardonnay?"
-    # response = chat_engine.chat(query)
-    # print(response)
-    # eval_result = evaluator.evaluate_response(response=response)
-    # print(str(eval_result.passing))
+def main():
+    pass
 
 
 if __name__ == "__main__":

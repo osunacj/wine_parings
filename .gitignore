@@ -8,3 +8,4 @@ app/notebooks/helpers/models/wine_average_embeddings.pkl
 app/notebooks/helpers/models/food_taste_dict.pkl
 
 lib/
+app/.env
