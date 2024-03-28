@@ -21,10 +21,14 @@ from llama_index.core.evaluation import (
     SemanticSimilarityEvaluator,
     QueryResponseDataset,
 )
+from tqdm import tqdm
 
 from data.evaluation.evaluation import evaluation_qa_pairings
 from notebooks.helpers.bot.kg_generation import create_kg_triplets
-from notebooks.helpers.bot.promtps import question_gen_query
+from notebooks.helpers.bot.promtps import (
+    question_gen_query,
+    EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE,
+)
 from notebooks.helpers.bot.bot import (
     get_chat_engine,
     get_query_engine,
@@ -43,8 +47,16 @@ def get_eval_results(key, eval_results):
     results = eval_results[key]
     correct = 0
     for result in results:
-        if result.passing or result.score >= 0.85:
-            correct += 1
+        if not result:
+            continue
+
+        try:
+            if result.passing:
+                correct += 1
+            elif result.passing == None and result.score >= 0.85:
+                correct += 1
+        except:
+            continue
     score = correct / len(results)
     print(f"{key} Score: {score}")
     return score
@@ -69,14 +81,16 @@ def prepare_evalution_qa() -> pd.DataFrame:
 
 
 def get_qr_pairs():
-    eval_dataset = QueryResponseDataset.from_json(
-        "./app/data/evaluation/evaluation_dataset.json"
-    )
+    eval_dataset = open("./app/data/evaluation/evaluation_dataset.json")
+    eval_data = json.load(eval_dataset)
+
     questions, responses = [], []
 
-    for item in eval_dataset.qr_pairs:
-        questions.append(item[0])
-        responses.append(item[1])
+    for query, response in zip(
+        eval_data["queries"].values(), eval_data["responses"].values()
+    ):
+        questions.append(query)
+        responses.append(response)
 
     return questions, responses
 
@@ -92,7 +106,7 @@ def parse_evalutions(
     responses,
 ):
     evaluation_results_path = Path(
-        f"./app/data/evaluation/evaluation_results_{retriever_mode}.json"
+        f"./app/data/evaluation/eval_results_{chat_mode}_{response_mode}_{retriever_mode}.json"
     )
     eval_results_dict = {}
 
@@ -108,6 +122,9 @@ def parse_evalutions(
         }
         for index, response in enumerate(eval_results[eval_method]):
             # Response is of type EvaluationResults
+            if not response:
+                continue
+
             response_data = {
                 "query": queries[index],
                 "true_answer": responses[index],
@@ -115,6 +132,7 @@ def parse_evalutions(
                 "passing": response.passing,
                 "generated_response": response.response,
                 "retrieved_context": response.contexts,
+                "feedback": response.feedback,
             }
 
             eval_results_dict[eval_method]["data"].append(response_data)
@@ -123,9 +141,70 @@ def parse_evalutions(
         json.dump(eval_results_dict, file)
 
 
+def isfloat(num):
+    try:
+        float(num)
+        return True
+    except:
+        return False
+
+
+def default_parser(eval_response: str):
+    try:
+        response_lst = eval_response.replace("\n\n", "\n").split("\n")
+        for idx, elem in enumerate(response_lst):
+            if isfloat(elem):
+                score_str = elem
+                reasoning_str = response_lst[idx + 2]
+                break
+
+    except:
+        score_str = 0.0
+        reasoning_str = ""
+    score = float(score_str)
+    reasoning = reasoning_str.lstrip("\n")
+    return score, reasoning
+
+
+def evaluate_faithfulness(faithfulness_eval, queries, references, responses):
+    results = []
+    for query, reference, response in tqdm(
+        zip(queries, references, responses),
+        total=len(responses),
+        desc="Calculating Faithfulness",
+    ):
+        try:
+            evaluation = faithfulness_eval.evaluate(
+                query=query, response=response.response, contexts=[reference]
+            )
+            results.append(evaluation)
+        except:
+            results.append(None)
+            continue
+    return results
+
+
+def evaluate_correctness(correctness_eval, queries, references, responses):
+    results = []
+    for query, reference, response in tqdm(
+        zip(queries, references, responses),
+        total=len(responses),
+        desc="Calculating Correctness",
+    ):
+        try:
+            evaluation = correctness_eval.evaluate(
+                query=query, response=response.response, referece=reference
+            )
+            results.append(evaluation)
+        except:
+            results.append(None)
+            continue
+    return results
+
+
 def main():
-    KG = create_kg_triplets(sample_size=600)
-    kg_pairings = KG.apply(generate_pairings_documents, axis=1)
+    # KG = create_kg_triplets()
+    # kg_pairings = KG.apply(generate_pairings_documents, axis=1)
 
     llm = load_llm("openai3.5")
     embed_model = load_embedding_model("openai3")
@@ -138,19 +217,6 @@ def main():
         force=False,
     )
 
-    query_engine = get_query_engine(
-        kg_index,
-        chat_mode="context",
-        retriver_mode="hybrid",
-        response_mode="compact",
-        use_global_node_triplets=True,
-        max_keywords_per_query=10,
-        num_chunks_per_query=10,
-        similarity_top_k=3,
-        graph_store_query_depth=3,
-        include_text=False,
-    )
-
     metrics = ["mrr", "hit_rate"]
 
     relevancy_eval = RelevancyEvaluator(service_context=service_context)
@@ -158,7 +224,11 @@ def main():
     semantic_eval = SemanticSimilarityEvaluator(service_context=service_context)
     answer_eval = AnswerRelevancyEvaluator(service_context=service_context)
     context_eval = ContextRelevancyEvaluator(service_context=service_context)
-    correctness_eval = CorrectnessEvaluator(service_context=service_context)
+    correctness_eval = CorrectnessEvaluator(
+        llm=load_llm("openai3.5"),
+        parser_function=default_parser,
+        eval_template=EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE,
+    )
     retriever_eval = RetrieverEvaluator.from_metric_names(
         metrics,
         service_context=service_context,
@@ -167,36 +237,63 @@ def main():
 
     runner = BatchEvalRunner(
         {
-            "faithfulness": faithfulness_eval,
             "relevancy": relevancy_eval,
             "answer_relevancy": answer_eval,
-            "context_relevancy": context_eval,
             "semantic": semantic_eval,
-            # "correctness": correctness_eval,
+            "context_relevancy": context_eval,
         },
-        workers=8,
+        workers=4,
+        show_progress=True,
     )
-    queries, responses = get_qr_pairs()
-    eval_results = runner.evaluate_queries(
-        query_engine,
+
+    CHAT_MODE = "context"
+    RETRIEVER_MODE = "embedding"
+    RESPONSE_MODE = "compact"
+
+    query_engine = get_query_engine(
+        kg_index,
+        chat_mode=CHAT_MODE,
+        retriver_mode=RETRIEVER_MODE,
+        response_mode=RESPONSE_MODE,
+        use_global_node_triplets=True,
+        max_keywords_per_query=10,
+        num_chunks_per_query=10,
+        similarity_top_k=4,
+        graph_store_query_depth=4,
+        include_text=False,  # Do not include text of the node into the model
+    )
+
+    queries, references = get_qr_pairs()
+    responses = [query_engine.query(query) for query in queries]
+
+    eval_results = runner.evaluate_responses(
+        responses=responses,
         queries=queries,
-        reference=responses,  # type: ignore
-        # eval_kwargs_lists={
-        # {
-        #   "correctness":  "reference": eval_dataset["responses"].to_list(),
-        # }
-        # },
+        reference=references,  # type: ignore
+    )
+
+    eval_results["faithfulness"] = evaluate_faithfulness(
+        faithfulness_eval=faithfulness_eval,
+        queries=queries,
+        references=references,
+        responses=responses,
+    )
+    eval_results["correctness"] = evaluate_correctness(
+        correctness_eval,
+        queries,
+        references,
+        responses=responses,
     )
 
     parse_evalutions(
         eval_results=eval_results,
         model="gpt-3.5",
         embedding_model="gpt-3.5",
-        response_mode="compact",
-        retriever_mode="hybrid",
-        chat_mode="simple",  # Irrelevant if the response are from QueryEngine
+        chat_mode=CHAT_MODE,
+        retriever_mode=RETRIEVER_MODE,
+        response_mode=RESPONSE_MODE,
         queries=queries,
-        responses=responses,
+        responses=references,
     )
 
     # response = chat_engine.chat(

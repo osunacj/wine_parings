@@ -1,3 +1,4 @@
+import random
 from typing import Union
 import pandas as pd
 import numpy as np
@@ -175,11 +176,14 @@ def calculate_avg_food_vec(
                 if ingredient in food_taste_mappings[core_taste]:
                     sample_food_vecs.append(food_embedding)
 
-        ingredients_tastes[core_taste] = (
-            np.average(sample_food_vecs, axis=0)
-            if len(sample_food_vecs) > 0
-            else ingredients_tastes["aroma"]
-        )
+        if len(sample_food_vecs) > 0:
+            embed = np.average(sample_food_vecs, axis=0)
+        else:
+            embed = ingredients_tastes.get("aroma", [])
+            if embed == []:
+                return {}
+
+        ingredients_tastes[core_taste] = embed
     return ingredients_tastes
 
 
@@ -276,6 +280,9 @@ def get_food_attributes(
         food_average_distances=food_average_distances,
         dish_ingredients=dish_embeddings,
     )
+    if food_tastes_distances == {}:
+        return False, False
+
     # The aroma embedding is the average of all the ingredients in the food
     food_attributes = calculate_food_attributes(
         food_tastes_distances, food_average_distances
@@ -365,6 +372,9 @@ def generate_pairing_for_ingredients(
         ingredients, food_to_embeddings_dict, prediction_model
     )
 
+    if not food_attributes and not food_tastes_distances:
+        return False, False
+
     wine_recommendations = nonaroma_rules(wine_recommendations, food_attributes)
     wine_recommendations = congruent_or_contrasting(
         wine_recommendations, food_attributes
@@ -393,13 +403,25 @@ def generate_pairings(food_dataset: pd.DataFrame):
             wine_recommendations=wine_recommendations,
             prediction_model=prediction_model,
         )
+
+        if type(recommendations) == bool:
+            return [np.nan, np.nan, np.nan, np.nan]
+
+        # ingredients_sample = random.sample(ingredients, k=6)
         # only interested in top 4 wines
-        return recommendations.index.T.tolist()[:4]
+        recommended = recommendations.index.T.tolist()[:4]
+        return recommended
 
     food_dataset[
-        ["first_pairing", "second_pairing", "third_pairing", "fourth_pairing"]
+        [
+            "first_pairing",
+            "second_pairing",
+            "third_pairing",
+            "fourth_pairing",
+        ]
     ] = food_dataset.apply(iter_recipes, axis=1, result_type="expand")
 
+    food_dataset.dropna(inplace=True, axis=0)
     food_dataset.to_csv(recipe_pairings_path, index_label="index")
 
 
@@ -409,7 +431,7 @@ def main():
         "ingredients_in_instructions"
     ].apply(lambda x: (np.nan if x == "[]" else x))
     food_dataset = food_dataset.dropna(subset=["ingredients_in_instructions"])
-    food_dataset = food_dataset.sample(n=1000, axis=0, random_state=43)
+    food_dataset = food_dataset.sample(n=5000, axis=0, random_state=53)
     generate_pairings(food_dataset=food_dataset)
 
     # ingredients = ["roast_chicken", "tarragon", "sage"]

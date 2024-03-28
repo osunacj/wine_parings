@@ -25,6 +25,10 @@ from notebooks.helpers.bot.promtps import (
     WINE_KG_PROMPT,
     PAIRING_KEYWORD_EXTRACT,
     CONTEXT_TEMPLATE,
+    NO_CONTEXT_TEMPLATE,
+    REFINE_TEMPLATE,
+    TEXT_QA_TEMPLATE,
+    SYSTEM_PROMPT,
 )
 import torch
 from pathlib import Path
@@ -36,8 +40,8 @@ import openai
 
 
 openai.api_key = get_key("./app/.env", "OPENAI_API_KEY")
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+# logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+# logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 MEMORY = ChatMemoryBuffer.from_defaults(token_limit=5000)
 
@@ -86,8 +90,8 @@ def load_llm(llm_name: str):
     elif llm_name == "openai3.5":
         llm = OpenAI(
             model="gpt-3.5-turbo-0125",
-            temperature=0.0,
-            max_tokens=2000,
+            temperature=0.1,
+            max_tokens=3000,
             context_window=1536,
         )
 
@@ -128,9 +132,7 @@ def service(chunk_size=384, llm=None, embed_model=None):
         chunk_size=chunk_size,
         llm=llm,
         embed_model=embed_model,
-        system_prompt=(
-            "You are a master sommelier with extent knowledge of wine and food pairings. Therefore, you can help by answering wine and food related questions."
-        ),
+        system_prompt=SYSTEM_PROMPT,
     )
 
 
@@ -204,6 +206,7 @@ def get_chat_engine(
     similarity_top_k=3,
     graph_store_query_depth=3,
     memory=MEMORY,
+    include_text=True,
 ):
 
     chat_engine = kg_index.as_chat_engine(
@@ -212,7 +215,7 @@ def get_chat_engine(
         retriever_mode=retriver_mode,
         response_mode=response_mode,
         verbose=True,
-        include_text=True,
+        include_text=include_text,
         max_keywords_per_query=max_keywords_per_query,
         num_chunks_per_query=num_chunks_per_query,
         similarity_top_k=similarity_top_k,
@@ -220,6 +223,8 @@ def get_chat_engine(
         context_template=CONTEXT_TEMPLATE,
         use_global_node_triplets=use_global_node_triplets,
         kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
+        text_qa_template=TEXT_QA_TEMPLATE,
+        refine_template=REFINE_TEMPLATE,
     )
 
     return chat_engine
@@ -238,6 +243,13 @@ def get_query_engine(
     include_text=True,
 ):
 
+    if chat_mode == "simple":
+        return get_simple_query(
+            response_mode=response_mode,
+            retriever_mode=retriver_mode,
+            include_text=include_text,
+        )
+
     query_engine = kg_index.as_query_engine(
         chat_mode=chat_mode,
         memory=MEMORY,
@@ -252,6 +264,8 @@ def get_query_engine(
         context_template=CONTEXT_TEMPLATE,
         use_global_node_triplets=use_global_node_triplets,
         kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
+        text_qa_template=TEXT_QA_TEMPLATE,
+        refine_template=REFINE_TEMPLATE,
     )
 
     return query_engine
@@ -259,33 +273,25 @@ def get_query_engine(
 
 def get_simple_query(
     response_mode="compact",
-    retriver_mode="hybrid",
-    chat_mode="context",
+    retriever_mode="hybrid",
     include_text=False,
 ):
     llm = load_llm("openai3.5")
     embed_model = load_embedding_model("openai3")
     service_context = service(llm=llm, embed_model=embed_model)
 
-    kg_index = KnowledgeGraphIndex.from_documents(
-        documents=[
-            Document(
-                text="",
-            )
-        ],
-        service_context=service_context,
-        include_embeddings=True,
-    )
+    kg_index = KnowledgeGraphIndex([])
 
     return kg_index.as_query_engine(
-        chat_mode=chat_mode,
-        memory=MEMORY,
-        retriever_mode=retriver_mode,
+        chat_mode="simple",
+        retriever_mode=retriever_mode,
         response_mode=response_mode,
         verbose=True,
         include_text=include_text,
-        context_template=CONTEXT_TEMPLATE,
+        context_template=NO_CONTEXT_TEMPLATE,
         kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
+        text_qa_template=TEXT_QA_TEMPLATE,
+        refine_template=REFINE_TEMPLATE,
     )
 
 

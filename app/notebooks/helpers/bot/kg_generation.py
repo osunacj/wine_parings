@@ -131,9 +131,9 @@ def create_wine_triplets(
 ) -> pd.DataFrame:
     wine_triplets_path = Path("./app/data/kg_triplets/wine_triplets.csv")
 
-    # if wine_triplets_path.exists():
-    #     triplets = pd.read_csv(wine_triplets_path, index_col="Unnamed: 0")
-    #     return triplets
+    if wine_triplets_path.exists():
+        triplets = pd.read_csv(wine_triplets_path, index_col="Unnamed: 0")
+        return triplets
 
     wine_dataframe = get_wine_dataframe()
     # REMOVE THIS
@@ -158,7 +158,7 @@ def create_wine_triplets(
         wine_dataframe, relationships, special_description="wine", for_model=for_model
     )
 
-    # triplets.to_csv(wine_triplets_path)
+    triplets.to_csv(wine_triplets_path)
 
     return triplets
 
@@ -203,7 +203,7 @@ def create_food_triplets(
     )
 
 
-def create_kg_triplets(sample_size=1000, for_model: bool = True):
+def create_kg_triplets(sample_size=5000, for_model: bool = True):
     KG = pd.concat(
         [
             create_food_triplets(for_model=for_model),
@@ -212,7 +212,7 @@ def create_kg_triplets(sample_size=1000, for_model: bool = True):
         ],
         axis=0,
     )
-
+    print("Size of KG is: ", KG.shape)
     return KG.sample(n=sample_size, axis=0, random_state=43)
 
 
