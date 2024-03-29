@@ -85,14 +85,14 @@ def load_llm(llm_name: str):
         llm = OpenAI(
             model="gpt-4",
             temperature=0.0,
-            max_tokens=1536,
+            max_tokens=1024,
         )
     elif llm_name == "openai3.5":
         llm = OpenAI(
             model="gpt-3.5-turbo-0125",
             temperature=0.1,
             max_tokens=3000,
-            context_window=1536,
+            context_window=1024,
         )
 
     elif llm_name == "gpt2":

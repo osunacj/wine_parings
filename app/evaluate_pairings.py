@@ -4,6 +4,7 @@ from xml.etree.ElementInclude import include
 from h11 import Data
 import pandas as pd
 import numpy as np
+from ragas import metrics
 
 import nest_asyncio
 
@@ -26,8 +27,11 @@ from tqdm import tqdm
 from data.evaluation.evaluation import evaluation_qa_pairings
 from notebooks.helpers.bot.kg_generation import create_kg_triplets
 from notebooks.helpers.bot.promtps import (
+    ANSWER_REL_EVAL_TEMPLATE,
     question_gen_query,
     EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE,
+    FAITH_EVAL_TEMPLATE,
+    CONTEXT_REL_PROMPT,
 )
 from notebooks.helpers.bot.bot import (
     get_chat_engine,
@@ -81,7 +85,7 @@ def prepare_evalution_qa() -> pd.DataFrame:
 
 
 def get_qr_pairs():
-    eval_dataset = open("./app/data/evaluation/evaluation_dataset.json")
+    eval_dataset = open("./app/data/evaluation/evaluation_evolved.json")
     eval_data = json.load(eval_dataset)
 
     questions, responses = [], []
@@ -220,10 +224,18 @@ def main():
     metrics = ["mrr", "hit_rate"]
 
     relevancy_eval = RelevancyEvaluator(service_context=service_context)
-    faithfulness_eval = FaithfulnessEvaluator(service_context=service_context)
+    faithfulness_eval = FaithfulnessEvaluator(
+        service_context=service_context, eval_template=FAITH_EVAL_TEMPLATE
+    )
     semantic_eval = SemanticSimilarityEvaluator(service_context=service_context)
-    answer_eval = AnswerRelevancyEvaluator(service_context=service_context)
-    context_eval = ContextRelevancyEvaluator(service_context=service_context)
+    answer_eval = AnswerRelevancyEvaluator(
+        service_context=service_context,
+        eval_template=ANSWER_REL_EVAL_TEMPLATE,
+        score_threshold=3.0,
+    )
+    context_eval = ContextRelevancyEvaluator(
+        service_context=service_context,
+    )
     correctness_eval = CorrectnessEvaluator(
         llm=load_llm("openai3.5"),
         parser_function=default_parser,
@@ -247,23 +259,24 @@ def main():
     )
 
     CHAT_MODE = "context"
-    RETRIEVER_MODE = "embedding"
-    RESPONSE_MODE = "compact"
+    RETRIEVER_MODE = "hybrid"
+    RESPONSE_MODE = "refine"
 
     query_engine = get_query_engine(
         kg_index,
         chat_mode=CHAT_MODE,
         retriver_mode=RETRIEVER_MODE,
         response_mode=RESPONSE_MODE,
-        use_global_node_triplets=True,
+        use_global_node_triplets=False,
         max_keywords_per_query=10,
         num_chunks_per_query=10,
         similarity_top_k=4,
-        graph_store_query_depth=4,
+        graph_store_query_depth=2,
         include_text=False,  # Do not include text of the node into the model
     )
 
     queries, references = get_qr_pairs()
+    # queries = queries[:50]
     responses = [query_engine.query(query) for query in queries]
 
     eval_results = runner.evaluate_responses(
