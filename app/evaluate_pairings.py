@@ -206,6 +206,69 @@ def evaluate_correctness(correctness_eval, queries, references, responses):
     return results
 
 
+def evaluate_relevancy(relevancy_eval, queries, references, responses):
+    results = []
+    for query, reference, response in tqdm(
+        zip(queries, references, responses),
+        total=len(responses),
+        desc="Calculating Relevancy",
+    ):
+        try:
+            evaluation = relevancy_eval.evaluate(
+                query=query,
+                response=response.response,
+                contexts=response.contexts,
+                sleep_time_in_seconds=0.2,
+            )
+            results.append(evaluation)
+        except:
+            results.append(None)
+            continue
+    return results
+
+
+def evaluate_ans_relevancy(answer_relevancy_eval, queries, references, responses):
+    results = []
+    for query, reference, response in tqdm(
+        zip(queries, references, responses),
+        total=len(responses),
+        desc="Calculating Answer Relevancy",
+    ):
+        try:
+            evaluation = answer_relevancy_eval.evaluate(
+                query=query,
+                response=response.response,
+                contexts=response.contexts,
+                sleep_time_in_seconds=0.2,
+            )
+            results.append(evaluation)
+        except:
+            results.append(None)
+            continue
+    return results
+
+
+def evaluate_context_relevancy(context_relevancy_eval, queries, references, responses):
+    results = []
+    for query, reference, response in tqdm(
+        zip(queries, references, responses),
+        total=len(responses),
+        desc="Calculating Context Relevancy",
+    ):
+        try:
+            evaluation = context_relevancy_eval.evaluate(
+                query=query,
+                response=response.response,
+                contexts=response.contexts,
+                sleep_time_in_seconds=0.2,
+            )
+            results.append(evaluation)
+        except:
+            results.append(None)
+            continue
+    return results
+
+
 def main():
     # KG = create_kg_triplets()
     # kg_pairings = KG.apply(generate_pairings_documents, axis=1)
@@ -241,26 +304,19 @@ def main():
         parser_function=default_parser,
         eval_template=EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE,
     )
-    retriever_eval = RetrieverEvaluator.from_metric_names(
-        metrics,
-        service_context=service_context,
-        retriever=kg_index.as_retriever(retriever_mode="hybrid"),
-    )
 
     runner = BatchEvalRunner(
         {
-            "relevancy": relevancy_eval,
-            "answer_relevancy": answer_eval,
             "semantic": semantic_eval,
-            "context_relevancy": context_eval,
+            # "context_relevancy": context_eval,
         },
         workers=4,
         show_progress=True,
     )
 
     CHAT_MODE = "context"
-    RETRIEVER_MODE = "hybrid"
-    RESPONSE_MODE = "refine"
+    RETRIEVER_MODE = "embedding"
+    RESPONSE_MODE = "compact"
 
     query_engine = get_query_engine(
         kg_index,
@@ -272,17 +328,39 @@ def main():
         num_chunks_per_query=10,
         similarity_top_k=4,
         graph_store_query_depth=2,
-        include_text=False,  # Do not include text of the node into the model
+        include_text=True,  # Do not include text of the node into the model
     )
 
     queries, references = get_qr_pairs()
-    # queries = queries[:50]
+
     responses = [query_engine.query(query) for query in queries]
 
-    eval_results = runner.evaluate_responses(
+    # eval_results = runner.evaluate_responses(
+    #     responses=responses,
+    #     queries=queries,
+    #     reference=references,  # type: ignore
+    # )
+    eval_results = {}
+
+    eval_results["relevancy"] = evaluate_relevancy(
+        relevancy_eval,
+        queries,
+        references,
         responses=responses,
+    )
+
+    eval_results["context_relevancy"] = evaluate_context_relevancy(
+        context_eval,
+        queries,
+        references,
+        responses=responses,
+    )
+
+    eval_results["answer_relevancy"] = evaluate_ans_relevancy(
+        answer_relevancy_eval=answer_eval,
         queries=queries,
-        reference=references,  # type: ignore
+        references=references,
+        responses=responses,
     )
 
     eval_results["faithfulness"] = evaluate_faithfulness(

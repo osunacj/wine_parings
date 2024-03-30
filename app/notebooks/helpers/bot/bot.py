@@ -230,6 +230,29 @@ def get_chat_engine(
     return chat_engine
 
 
+def get_simple_query(
+    response_mode="compact",
+    retriever_mode="hybrid",
+    include_text=False,
+):
+    llm = load_llm("openai3.5")
+    embed_model = load_embedding_model("openai3")
+
+    kg_index = KnowledgeGraphIndex([], llm=llm, embed_model=embed_model)
+
+    return kg_index.as_query_engine(
+        chat_mode="simple",
+        retriever_mode=retriever_mode,
+        response_mode=response_mode,
+        verbose=True,
+        include_text=include_text,
+        context_template=NO_CONTEXT_TEMPLATE,
+        kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
+        text_qa_template=TEXT_QA_TEMPLATE,
+        refine_template=REFINE_TEMPLATE,
+    )
+
+
 def get_query_engine(
     kg_index,
     response_mode="compact",
@@ -269,30 +292,6 @@ def get_query_engine(
     )
 
     return query_engine
-
-
-def get_simple_query(
-    response_mode="compact",
-    retriever_mode="hybrid",
-    include_text=False,
-):
-    llm = load_llm("openai3.5")
-    embed_model = load_embedding_model("openai3")
-    service_context = service(llm=llm, embed_model=embed_model)
-
-    kg_index = KnowledgeGraphIndex([])
-
-    return kg_index.as_query_engine(
-        chat_mode="simple",
-        retriever_mode=retriever_mode,
-        response_mode=response_mode,
-        verbose=True,
-        include_text=include_text,
-        context_template=NO_CONTEXT_TEMPLATE,
-        kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
-        text_qa_template=TEXT_QA_TEMPLATE,
-        refine_template=REFINE_TEMPLATE,
-    )
 
 
 def main():

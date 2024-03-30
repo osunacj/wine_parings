@@ -48,9 +48,9 @@ CONTEXT_TEMPLATE = (
     "\n--------------------\n"
 )
 
-EVAL_TEMPLATE = PromptTemplate(
-    "Please tell if a given piece of information "
-    "is supported by the context.\n"
+FAITH_EVAL_TEMPLATE = PromptTemplate(
+    "Please tell if a given piece of information can be inferred AND "
+    "is supported by the given context.\n"
     "You need to answer with either YES or NO.\n"
     "Answer YES if any of the context supports the information, even "
     "if most of the context is unrelated. "
@@ -96,7 +96,7 @@ You may also be given a reference answer to use for reference in your evaluation
 
 Your job is to judge the relevance and correctness of the generated answer.
 Output a single score that represents a holistic evaluation.
-You must return your response in a line with only the score.
+You must return your response following the example below.
 Do not return answers in any other format.
 On a separate line provide your reasoning for the score as well.
 
@@ -162,3 +162,37 @@ Therefore, you understand what is required to make the best matches and recommen
 Aditionally, you are an expert in wine and possess extensive information about the topic.
 That is the reason why you will answer questions and recommend wine to your clients.
 """
+
+
+ANSWER_REL_EVAL_TEMPLATE = PromptTemplate(
+    "Your task is to evaluate if the response is relevant to the query.\n"
+    "Identify if the given response is noncommittal to the given query. Give noncommittal a score of 0 if the response is noncommittal and 1 if the response is committal. A noncommittal response is one that is evasive, vague, or ambiguous. For example, 'I don't know', 'I'm not sure' or 'I can't access data' are noncommittal responses.\n"
+    "The evaluation should be performed in a step-by-step manner by answering the following questions:\n"
+    "1. Does the provided response match the subject matter of the user's query?\n"
+    "2. Does the provided response attempt to address the focus "
+    "on the subject matter taken on by the user's query?\n"
+    "3. Is the response committal to the user's query?\n"
+    "For example:\n"
+    "Query: \n 'What is the tallest mountain on Earth?'\n"
+    "Respnse: \n 'The tallest mountain on Earth, measured from sea level, is a renowned peak located in the Himalayas.'\n"
+    "Feedback: The response is relevant to the query as the reponse answers what is being asked and it is commited to the query. [RESULT] 3"
+    "Each question above is worth 1 point. Provide detailed feedback on response according to the criteria questions above  "
+    "After your feedback provide a final result by strictly following this format: '[RESULT] followed by the integer number representing the total score assigned to the response'\n\n"
+    "Query: \n {query}\n"
+    "Response: \n {response}\n"
+    "Feedback:"
+)
+
+CONTEXT_REL_PROMPT = DEFAULT_EVAL_TEMPLATE = PromptTemplate(
+    "Please extract relevant sentences from the provided context, the context is in the form of triplets from a Knowledge Graph, that are absolutely required to answer the following query. If no relevant sentences are found, or if you believe the query cannot be answered from the given context, return the phrase 'Insufficient Information' as Feedback and a result of 0. While extracting candidate sentences you're not allowed to make any changes to sentences from given context.\n"
+    "The evaluation should be performed in a step-by-step manner by answering the following questions:\n"
+    "1. Does the extracted sentences match the subject matter of the user's query?\n"
+    "2. Can the retrieved sentences be used EXCLUSIVELY to provide a full answer to the user's query?\n"
+    "Each question above is worth 2 points, where partial marks are allowed and encouraged. Provide detailed feedback on the response "
+    "according to the criteria questions previously mentioned. "
+    "After your feedback provide a final result by strictly following this format: "
+    "'[RESULT] followed by the float number representing the total score assigned to the response'\n\n"
+    "Query: \n {query_str}\n"
+    "Context: \n {context_str}\n"
+    "Feedback:"
+)
