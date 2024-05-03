@@ -231,9 +231,7 @@ def get_chat_engine(
 
 
 def get_simple_query(
-    response_mode="compact",
-    retriever_mode="hybrid",
-    include_text=False,
+    response_mode="compact", retriever_mode="hybrid", include_text=False, verbose=True
 ):
     llm = load_llm("openai3.5")
     embed_model = load_embedding_model("openai3")
@@ -244,7 +242,7 @@ def get_simple_query(
         chat_mode="simple",
         retriever_mode=retriever_mode,
         response_mode=response_mode,
-        verbose=True,
+        verbose=verbose,
         include_text=include_text,
         context_template=NO_CONTEXT_TEMPLATE,
         kg_triple_extract_template=PAIRING_KEYWORD_EXTRACT,
@@ -264,6 +262,7 @@ def get_query_engine(
     similarity_top_k=3,
     graph_store_query_depth=3,
     include_text=True,
+    verbose=True,
 ):
 
     if chat_mode == "simple":
@@ -278,7 +277,7 @@ def get_query_engine(
         memory=MEMORY,
         retriever_mode=retriver_mode,
         response_mode=response_mode,
-        verbose=True,
+        verbose=verbose,
         include_text=include_text,
         max_keywords_per_query=max_keywords_per_query,
         num_chunks_per_query=num_chunks_per_query,

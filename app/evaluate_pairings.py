@@ -50,6 +50,12 @@ nest_asyncio.apply()
 def get_eval_results(key, eval_results):
     results = eval_results[key]
     correct = 0
+    if key == "semantic":
+        scores = [result.score for result in results]
+        score = np.average(scores)
+        print(f"{key} Score: {score}")
+        return score
+
     for result in results:
         if not result:
             continue
@@ -159,7 +165,7 @@ def default_parser(eval_response: str):
         for idx, elem in enumerate(response_lst):
             if isfloat(elem):
                 score_str = elem
-                reasoning_str = response_lst[idx + 2]
+                reasoning_str = response_lst[idx + 1]
                 break
 
     except:
@@ -217,7 +223,7 @@ def evaluate_relevancy(relevancy_eval, queries, references, responses):
             evaluation = relevancy_eval.evaluate(
                 query=query,
                 response=response.response,
-                contexts=response.contexts,
+                contexts=[node.get_content() for node in response.source_nodes],
                 sleep_time_in_seconds=0.2,
             )
             results.append(evaluation)
@@ -238,7 +244,6 @@ def evaluate_ans_relevancy(answer_relevancy_eval, queries, references, responses
             evaluation = answer_relevancy_eval.evaluate(
                 query=query,
                 response=response.response,
-                contexts=response.contexts,
                 sleep_time_in_seconds=0.2,
             )
             results.append(evaluation)
@@ -259,7 +264,7 @@ def evaluate_context_relevancy(context_relevancy_eval, queries, references, resp
             evaluation = context_relevancy_eval.evaluate(
                 query=query,
                 response=response.response,
-                contexts=response.contexts,
+                contexts=[node.get_content() for node in response.source_nodes],
                 sleep_time_in_seconds=0.2,
             )
             results.append(evaluation)
@@ -280,43 +285,61 @@ def main():
     storage_context, kg_index = setup_index_and_storage(
         service=service_context,
         kg_pairings=None,
-        show_progress=False,
+        show_progress=True,
         force=False,
     )
 
     metrics = ["mrr", "hit_rate"]
 
-    relevancy_eval = RelevancyEvaluator(service_context=service_context)
+    llm_eval = load_llm("openai3.5")
+    embed_model_eval = load_embedding_model("openai3")
+    service_context_eval = service(llm=llm_eval, embed_model=embed_model_eval)
+    relevancy_eval = RelevancyEvaluator(service_context=service_context_eval)
     faithfulness_eval = FaithfulnessEvaluator(
         service_context=service_context, eval_template=FAITH_EVAL_TEMPLATE
     )
-    semantic_eval = SemanticSimilarityEvaluator(service_context=service_context)
+    semantic_eval = SemanticSimilarityEvaluator(service_context=service_context_eval)
     answer_eval = AnswerRelevancyEvaluator(
-        service_context=service_context,
+        service_context=service_context_eval,
         eval_template=ANSWER_REL_EVAL_TEMPLATE,
         score_threshold=3.0,
     )
     context_eval = ContextRelevancyEvaluator(
-        service_context=service_context,
+        service_context=service_context_eval, eval_template=CONTEXT_REL_PROMPT
     )
     correctness_eval = CorrectnessEvaluator(
-        llm=load_llm("openai3.5"),
+        service_context=service_context_eval,
         parser_function=default_parser,
         eval_template=EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE,
     )
 
-    runner = BatchEvalRunner(
-        {
-            "semantic": semantic_eval,
-            # "context_relevancy": context_eval,
-        },
-        workers=4,
-        show_progress=True,
-    )
-
-    CHAT_MODE = "context"
-    RETRIEVER_MODE = "embedding"
+    CHAT_MODE = "simple"
+    RETRIEVER_MODE = "keyword"
     RESPONSE_MODE = "compact"
+
+    if CHAT_MODE != "simple":
+        runner = BatchEvalRunner(
+            {
+                "semantic": semantic_eval,
+                "answer_relevancy": answer_eval,
+                "context_relevancy": context_eval,
+                "relevancy": relevancy_eval,
+                "correctness": correctness_eval,
+            },
+            workers=8,
+            show_progress=True,
+        )
+    else:
+        runner = BatchEvalRunner(
+            {
+                "semantic": semantic_eval,
+                "answer_relevancy": answer_eval,
+                "relevancy": relevancy_eval,
+                "correctness": correctness_eval,
+            },
+            workers=8,
+            show_progress=True,
+        )
 
     query_engine = get_query_engine(
         kg_index,
@@ -328,19 +351,37 @@ def main():
         num_chunks_per_query=10,
         similarity_top_k=4,
         graph_store_query_depth=2,
-        include_text=True,  # Do not include text of the node into the model
+        include_text=False,  # Do not include text of the node into the model
     )
 
     queries, references = get_qr_pairs()
 
-    responses = [query_engine.query(query) for query in queries]
+    if CHAT_MODE == "simple":
+        responses_strs = [
+            llm.complete(query).text
+            for query in tqdm(queries, total=len(queries), desc="Responses from Model")
+        ]
+        contexts = [[""]] * len(responses_strs)
+    else:
+        responses = [
+            query_engine.query(query)
+            for query in tqdm(
+                queries, total=len(queries), desc="Querying Knowledge Graph"
+            )
+        ]
+        responses_strs = [response_ty.response for response_ty in responses]
+        contexts = [
+            [node.get_content()]
+            for response in responses
+            for node in response.source_nodes
+        ]
 
-    # eval_results = runner.evaluate_responses(
-    #     responses=responses,
-    #     queries=queries,
-    #     reference=references,  # type: ignore
-    # )
-    eval_results = {}
+        eval_results = runner.evaluate_response_strs(
+            queries=queries,
+            response_strs=responses_strs,
+            contexts_list=contexts,
+            reference=references,  # type: ignore
+        )
 
     eval_results["relevancy"] = evaluate_relevancy(
         relevancy_eval,
@@ -349,31 +390,32 @@ def main():
         responses=responses,
     )
 
-    eval_results["context_relevancy"] = evaluate_context_relevancy(
-        context_eval,
-        queries,
-        references,
-        responses=responses,
-    )
+    # if CHAT_MODE != "simple":
+    #     eval_results["context_relevancy"] = evaluate_context_relevancy(
+    #         context_eval,
+    #         queries,
+    #         references,
+    #         responses=responses,
+    #     )
 
-    eval_results["answer_relevancy"] = evaluate_ans_relevancy(
-        answer_relevancy_eval=answer_eval,
-        queries=queries,
-        references=references,
-        responses=responses,
-    )
+    # eval_results["answer_relevancy"] = evaluate_ans_relevancy(
+    #     answer_relevancy_eval=answer_eval,
+    #     queries=queries,
+    #     references=references,
+    #     responses=responses,
+    # )
 
     eval_results["faithfulness"] = evaluate_faithfulness(
         faithfulness_eval=faithfulness_eval,
         queries=queries,
         references=references,
-        responses=responses,
+        responses=responses_strs,
     )
     eval_results["correctness"] = evaluate_correctness(
         correctness_eval,
         queries,
         references,
-        responses=responses,
+        responses=responses_strs,
     )
 
     parse_evalutions(

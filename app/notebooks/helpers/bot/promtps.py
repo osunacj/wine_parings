@@ -49,6 +49,7 @@ CONTEXT_TEMPLATE = (
 )
 
 FAITH_EVAL_TEMPLATE = PromptTemplate(
+    "You are an expert evaluation system for a question answering chatbot."
     "Please tell if a given piece of information can be inferred AND "
     "is supported by the given context.\n"
     "You need to answer with either YES or NO.\n"
@@ -86,10 +87,11 @@ NO_CONTEXT_TEMPLATE = (
 )
 
 EVALUATION_CORRECTNESS_SYSTEM_TEMPLATE = """
-ou are an expert evaluation system for a question answering chatbot.
+You are an expert evaluation system for a question answering chatbot.
 
 You are given the following information:
-- a user query, and
+- a user query,
+- a reference answer and, 
 - a generated answer
 
 You may also be given a reference answer to use for reference in your evaluation.
@@ -99,6 +101,7 @@ Output a single score that represents a holistic evaluation.
 You must return your response following the example below.
 Do not return answers in any other format.
 On a separate line provide your reasoning for the score as well.
+Correct Generated answer is that which has all the information from the Reference Answer AND FULLY addresses the user query. 
 
 Follow these guidelines for scoring:
 - Your score has to be between 1 and 5, where 1 is the worst and 5 is the best.
@@ -110,9 +113,7 @@ you should give a score between 2 and 3.
 you should give a score between 4 and 5.
 
 Example Response:
-SCORE:
 4.0 \n
-RESONING:
 The generated answer has the exact same metrics as the reference answer, \
     but it is not as concise.
 
@@ -125,14 +126,10 @@ The generated answer has the exact same metrics as the reference answer, \
 ## Generated Answer:
 {generated_answer}
 
-SCORE:
-
-REASONING:
-
 """
 question_gen_query = "You are a professor for master sommeliers, experts in wine. Your task is to setup \
 {num_questions_per_chunk} questions for an upcoming \
-examination. The questions should be diverse in nature \
+examination. The questions should be diverse \
 across the document. Restrict the questions to the \
 context information provided."
 
@@ -165,6 +162,7 @@ That is the reason why you will answer questions and recommend wine to your clie
 
 
 ANSWER_REL_EVAL_TEMPLATE = PromptTemplate(
+    "You are an expert evaluation system for a question answering chatbot. "
     "Your task is to evaluate if the response is relevant to the query.\n"
     "Identify if the given response is noncommittal to the given query. Give noncommittal a score of 0 if the response is noncommittal and 1 if the response is committal. A noncommittal response is one that is evasive, vague, or ambiguous. For example, 'I don't know', 'I'm not sure' or 'I can't access data' are noncommittal responses.\n"
     "The evaluation should be performed in a step-by-step manner by answering the following questions:\n"
@@ -184,10 +182,10 @@ ANSWER_REL_EVAL_TEMPLATE = PromptTemplate(
 )
 
 CONTEXT_REL_PROMPT = DEFAULT_EVAL_TEMPLATE = PromptTemplate(
-    "Please extract relevant sentences from the provided context, the context is in the form of triplets from a Knowledge Graph, that are absolutely required to answer the following query. If no relevant sentences are found, or if you believe the query cannot be answered from the given context, return the phrase 'Insufficient Information' as Feedback and a result of 0. While extracting candidate sentences you're not allowed to make any changes to sentences from given context.\n"
+    "The Context consits of a series of triplets extracted from a Knowledge Graph, please extract relevant triplets (head, relation, tail) from the provided Context that are absolutely required to answer the following Query. If no relevant triplets are found, or if you believe the Query cannot be answered from the given Context, return the phrase 'Insufficient Information' as Feedback and a result of 0. While extracting candidate triplets you're not allowed to make any changes to triplets from given context.\n"
     "The evaluation should be performed in a step-by-step manner by answering the following questions:\n"
-    "1. Does the extracted sentences match the subject matter of the user's query?\n"
-    "2. Can the retrieved sentences be used EXCLUSIVELY to provide a full answer to the user's query?\n"
+    "1. Does the extracted triplets match the subject matter of the user's query?\n"
+    "2. Can the retrieved triplets be used EXCLUSIVELY to provide a full answer to the user's query?\n"
     "Each question above is worth 2 points, where partial marks are allowed and encouraged. Provide detailed feedback on the response "
     "according to the criteria questions previously mentioned. "
     "After your feedback provide a final result by strictly following this format: "
